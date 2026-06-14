@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Spotti Voice</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+        --bg: oklch(0.16 0.012 275);
+        --surface: oklch(0.22 0.016 275);
+        --surface-hover: oklch(0.25 0.018 275);
+        --text: oklch(0.94 0.01 275);
+        --muted: oklch(0.68 0.02 275);
+        --accent: oklch(0.58 0.19 275);
+        --border: oklch(1 0 0 / 0.1);
+        --danger: oklch(0.65 0.2 25);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: transparent;
+        -webkit-user-select: none;
+        user-select: none;
+      }
+
+      .menu {
+        margin: 8px;
+        padding: 6px 6px 10px;
+        border-radius: 12px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        box-shadow:
+          0 12px 40px oklch(0 0 0 / 0.45),
+          0 0 0 1px oklch(1 0 0 / 0.04) inset;
+      }
+
+      .menu-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 12px 8px;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .menu-header img {
+        width: 24px;
+        height: 24px;
+        opacity: 0.95;
+      }
+
+      button {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        margin: 0;
+        padding: 10px 12px;
+        border: none;
+        border-radius: 8px;
+        background: transparent;
+        color: var(--text);
+        font: inherit;
+        font-size: 13px;
+        font-weight: 500;
+        text-align: left;
+        cursor: pointer;
+        transition: background 0.12s ease-out, color 0.12s ease-out;
+      }
+
+      button:hover,
+      button:focus-visible {
+        outline: none;
+        background: var(--surface-hover);
+      }
+
+      button:active {
+        transform: scale(0.99);
+      }
+
+      .divider {
+        height: 1px;
+        margin: 4px 8px;
+        background: var(--border);
+      }
+
+      button.danger {
+        color: var(--danger);
+      }
+
+      button.danger:hover,
+      button.danger:focus-visible {
+        background: oklch(0.65 0.2 25 / 0.12);
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="menu" role="menu" aria-label="Меню Spotti Voice">
+      <div class="menu-header">
+        <img src="../assets/app-icon.png" alt="" aria-hidden="true" />
+        <span>Spotti Voice</span>
+      </div>
+      <button type="button" data-action="show-pill">Показать виджет</button>
+      <button type="button" data-action="setup">Настройки</button>
+      <div class="divider" role="separator"></div>
+      <button type="button" class="danger" data-action="quit">Выход</button>
+    </nav>
+    <script>
+      const api = window.spottiTrayMenu;
+      if (!api) {
+        throw new Error("spottiTrayMenu bridge unavailable");
+      }
+
+      document.querySelectorAll("button[data-action]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const action = btn.getAttribute("data-action");
+          if (action === "show-pill") void api.showPill();
+          else if (action === "setup") void api.openSetup();
+          else if (action === "quit") void api.quit();
+        });
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") void api.dismiss();
+      });
+
+      const menu = document.querySelector(".menu");
+      function reportMenuSize() {
+        if (!menu) return;
+        const rect = menu.getBoundingClientRect();
+        void api.reportSize(Math.ceil(rect.width + 16), Math.ceil(rect.height + 16));
+      }
+
+      requestAnimationFrame(reportMenuSize);
+      window.addEventListener("load", reportMenuSize);
+    </script>
+  </body>
+</html>

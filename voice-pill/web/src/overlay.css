@@ -1,0 +1,284 @@
+/* Overlay-only styles — no settings shell, no page background paint. */
+
+:root {
+  color-scheme: only light;
+  font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --accent: #ff9f0a;
+  --accent-light: #ffc857;
+  --border-strong: rgba(255, 255, 255, 0.2);
+  --error: #ff6b4a;
+  --pill-height: 48px;
+  --pill-bg: #121212;
+  --pill-pad-left: 10px;
+  --pill-pad-right: 14px;
+  --pill-gap: 12px;
+  --logo-size: 42px;
+  --divider-w: 1px;
+  --divider-h: 16px;
+  --divider-color: rgba(255, 255, 255, 0.14);
+  --wave-zone-h: 28px;
+  --wave-bar-w: 4px;
+  --wave-gap: 4px;
+  --wave-bars: 7;
+  --wave-track-w: calc(
+    var(--wave-bars) * var(--wave-bar-w) + (var(--wave-bars) - 1) * var(--wave-gap)
+  );
+  --pill-min-w: calc(
+    var(--pill-pad-left) + var(--pill-pad-right) + var(--logo-size) + var(--wave-track-w) +
+      var(--divider-w) + 2 * var(--pill-gap)
+  );
+  --error-bubble-estimate: 88px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
+  min-height: var(--pill-height) !important;
+  height: auto !important;
+  overflow: visible !important;
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+#root {
+  margin: 0 !important;
+  padding: 0 !important;
+  display: block;
+  width: 100%;
+  min-height: var(--pill-height);
+  height: auto;
+  overflow: visible;
+  background: transparent !important;
+}
+
+.overlay-shell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: stretch;
+  width: 100%;
+  min-height: var(--pill-height);
+  height: auto;
+  overflow: visible;
+}
+
+/* Hidden sizer — content width only. */
+.pill-width-probe {
+  position: fixed;
+  left: -10000px;
+  top: 0;
+  visibility: hidden;
+  pointer-events: none;
+  height: var(--pill-height);
+  width: max-content;
+}
+
+.pill-width-probe .pill-inner--probe {
+  height: var(--pill-height);
+  width: max-content;
+}
+
+.pill {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: var(--pill-height);
+  overflow: hidden;
+  background: transparent;
+  -webkit-app-region: drag;
+  user-select: none;
+}
+
+.pill-slot {
+  position: relative;
+  flex: 0 0 var(--pill-height);
+  width: 100%;
+  min-width: var(--pill-min-w);
+  height: var(--pill-height);
+}
+
+.pill-error-stack {
+  flex: 0 0 auto;
+  width: max-content;
+  max-width: 100%;
+  align-self: center;
+  display: flex;
+  justify-content: center;
+  padding: 0 0 8px;
+  -webkit-app-region: no-drag;
+  z-index: 4;
+  pointer-events: auto;
+  background: transparent;
+}
+
+.pill-error-bubble {
+  position: relative;
+  display: block;
+  max-width: 280px;
+  width: max-content;
+  margin: 0 auto;
+  padding: 10px 12px 14px;
+  border: 1px solid rgba(255, 107, 74, 0.55);
+  border-radius: 12px;
+  background: #1a1214;
+  color: #ffe8e3;
+  font: 600 12px/1.4 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  text-align: center;
+  cursor: pointer;
+  animation: pill-error-in 0.22s ease-out both;
+}
+
+@keyframes pill-error-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.pill-error-bubble:focus-visible {
+  outline: 2px solid var(--accent-light);
+  outline-offset: 2px;
+}
+
+.pill-error-bubble__text {
+  display: block;
+}
+
+.pill-error-bubble__arrow {
+  position: absolute;
+  left: 50%;
+  bottom: -7px;
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  background: #1a1214;
+  border-right: 1px solid rgba(255, 107, 74, 0.55);
+  border-bottom: 1px solid rgba(255, 107, 74, 0.55);
+  transform: rotate(45deg);
+  pointer-events: none;
+}
+
+.pill-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: var(--pill-height);
+  display: block;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.pill-inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--pill-gap);
+  height: var(--pill-height);
+  padding-left: var(--pill-pad-left);
+  padding-right: var(--pill-pad-right);
+  width: max-content;
+  min-width: var(--pill-min-w);
+  overflow: visible;
+}
+
+.pill-wave-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex: 0 0 var(--wave-track-w);
+  width: var(--wave-track-w);
+  height: var(--pill-height);
+}
+
+.pill-logo {
+  flex: 0 0 var(--logo-size);
+  width: var(--logo-size);
+  height: var(--logo-size);
+  object-fit: contain;
+  object-position: 100% 50%;
+  display: block;
+  position: relative;
+  z-index: 2;
+  -webkit-app-region: no-drag;
+  pointer-events: none;
+}
+
+.pill-divider {
+  flex: 0 0 var(--divider-w);
+  width: var(--divider-w);
+  height: var(--divider-h);
+  background: var(--divider-color);
+  transform: scaleX(0.5);
+  transform-origin: center;
+  border-radius: 1px;
+  position: relative;
+  z-index: 3;
+}
+
+.wave {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--wave-gap);
+  width: var(--wave-track-w);
+  height: var(--wave-zone-h);
+}
+
+.wave span {
+  display: block;
+  width: var(--wave-bar-w);
+  min-height: 4px;
+  border-radius: 999px;
+  background: #ffffff;
+  flex: 0 0 var(--wave-bar-w);
+  align-self: center;
+  transition: height 0.06s linear, opacity 0.1s ease-out;
+}
+
+.wave.idle span {
+  opacity: 0.8;
+}
+
+.pill.processing .wave span {
+  animation: pulse 0.9s ease-in-out infinite;
+}
+
+.pill.error .wave span {
+  background: var(--error);
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wave span,
+  .pill.processing .wave span {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .pill-error-bubble {
+    animation: none !important;
+  }
+}

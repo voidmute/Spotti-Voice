@@ -1,0 +1,120 @@
+@echo off
+setlocal EnableExtensions EnableDelayedExpansion
+chcp 65001 >nul
+cd /d "%~dp0"
+
+set "SKIP_APP=0"
+if /I "%~1"=="-SkipAppBuild" set "SKIP_APP=1"
+
+for /f "usebackq delims=" %%V in ("installer\VERSION") do set "APP_VERSION=%%V"
+if not defined APP_VERSION set "APP_VERSION=0.1.0.0"
+
+echo [SPOTTI] Building SpottiVoice-Setup.exe (NSIS + Electron UI) v%APP_VERSION%
+
+if "%SKIP_APP%"=="0" (
+  echo [SPOTTI] Building application payload...
+  call "%~dp0build-exe.bat"
+  if errorlevel 1 exit /b 1
+) else (
+  if not exist "dist\Spotti Voice.exe" (
+    echo [SPOTTI] dist\Spotti Voice.exe missing. Run build-exe.bat first or omit -SkipAppBuild.
+    exit /b 1
+  )
+)
+
+where npm >nul 2>&1
+if errorlevel 1 (
+  echo [SPOTTI] Node.js/npm required for setup UI.
+  exit /b 1
+)
+
+echo [SPOTTI] Building setup UI (React)...
+pushd installer\web
+call npm install
+if errorlevel 1 goto :fail
+call npm run build
+if errorlevel 1 goto :fail
+popd
+if not exist "installer\web\dist\index.html" (
+  echo [SPOTTI] installer\web\dist\index.html missing.
+  exit /b 1
+)
+
+echo [SPOTTI] Installing setup Electron shell...
+if not exist "installer\electron\node_modules\electron\dist\resources.pak" (
+  pushd installer\electron
+  call npm install
+  if errorlevel 1 goto :fail
+  popd
+)
+
+echo [SPOTTI] Staging NSIS payload...
+if exist "installer\staging" rmdir /S /Q "installer\staging" 2>nul
+mkdir "installer\staging\payload" 2>nul
+mkdir "installer\staging\setup-ui" 2>nul
+
+robocopy "dist" "installer\staging\payload" /E /COPY:DAT /XD report /XF *.old /R:2 /W:1 /NFL /NDL /NJH /NJS >nul
+if errorlevel 8 (
+  echo [SPOTTI] Failed to stage dist payload.
+  exit /b 1
+)
+if exist "installer\staging\payload\electron\.user-data" rmdir /S /Q "installer\staging\payload\electron\.user-data" 2>nul
+del /F /Q "installer\staging\payload\*.old" 2>nul
+
+copy /Y "installer\electron\package.json" "installer\staging\setup-ui\" >nul
+copy /Y "installer\electron\package-lock.json" "installer\staging\setup-ui\" >nul 2>nul
+copy /Y "installer\electron\main.mjs" "installer\staging\setup-ui\" >nul
+copy /Y "installer\electron\preload.mjs" "installer\staging\setup-ui\" >nul
+xcopy /E /I /Y /Q "installer\web\dist" "installer\staging\setup-ui\web\dist" >nul
+if exist "installer\staging\setup-ui\.user-data" rmdir /S /Q "installer\staging\setup-ui\.user-data" 2>nul
+mkdir "installer\staging\setup-ui\runtime" 2>nul
+robocopy "installer\electron\node_modules\electron\dist" "installer\staging\setup-ui\runtime" /E /COPY:DAT /R:2 /W:1 /NFL /NDL /NJH /NJS >nul
+if not exist "installer\staging\setup-ui\runtime\electron.exe" (
+  echo [SPOTTI] Electron runtime missing in staging.
+  exit /b 1
+)
+
+echo [SPOTTI] Bundling MSVC runtime DLLs...
+powershell -NoProfile -ExecutionPolicy Bypass -File "installer\scripts\stage-vc-runtime.ps1" -TargetList "installer\staging\setup-ui\runtime;installer\staging\payload"
+if errorlevel 1 (
+  echo [SPOTTI] Failed to stage VC++ runtime DLLs.
+  exit /b 1
+)
+
+set "MAKENSIS=makensis"
+where makensis >nul 2>&1
+if errorlevel 1 (
+  if exist "tools\nsis\nsis-3.08\makensis.exe" (
+    set "MAKENSIS=%~dp0tools\nsis\nsis-3.08\makensis.exe"
+  ) else if exist "tools\nsis\nsis-3.08\Bin\makensis.exe" (
+    set "MAKENSIS=%~dp0tools\nsis\nsis-3.08\Bin\makensis.exe"
+  ) else (
+    echo [SPOTTI] NSIS not found. Install NSIS 3.x or extract to tools\nsis\nsis-3.08\
+    exit /b 1
+  )
+)
+
+if not exist "dist-setup" mkdir "dist-setup"
+echo [SPOTTI] Compiling NSIS installer...
+"%MAKENSIS%" /V2 "installer\nsis\SpottiVoice.nsi"
+if errorlevel 1 (
+  echo [SPOTTI] makensis failed.
+  exit /b 1
+)
+
+if exist "dist-setup\SpottiVoice-Setup.exe" del /F /Q "dist-setup\SpottiVoice-Setup.exe" >nul 2>&1
+move /Y "dist-setup\SpottiVoice-Setup.tmp.exe" "dist-setup\SpottiVoice-Setup.exe" >nul 2>&1
+if exist "dist-setup\SpottiVoice-Setup.tmp.exe" (
+  echo.
+  echo [WARN] SpottiVoice-Setup.exe is locked.
+  echo [OK]   dist-setup\SpottiVoice-Setup.tmp.exe
+  exit /b 0
+)
+
+echo.
+echo [OK] dist-setup\SpottiVoice-Setup.exe
+exit /b 0
+
+:fail
+popd
+exit /b 1

@@ -1,0 +1,14 @@
+{
+  "name": "spotti-voice-setup",
+  "private": true,
+  "version": "3.0.0",
+  "type": "module",
+  "main": "main.mjs",
+  "scripts": {
+    "start": "electron .",
+    "postinstall": "node -e \"console.log('Spotti setup shell ready')\""
+  },
+  "dependencies": {
+    "electron": "^35.1.5"
+  }
+}

@@ -1,0 +1,48 @@
+# Secrets — never commit
+.env
+.env.*
+.env.bak.*
+*.snippet
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+**/electron/.user-data/
+npm-debug.log*
+
+# Build outputs
+voice-pill/dist/
+voice-pill/dist-setup/
+voice-pill/installer/staging/
+voice-pill/installer/_7z-test/
+voice-pill/web/dist/
+voice-pill/installer/web/dist/
+
+# Binaries (ship via GitHub Releases, not git)
+*.exe
+*.dll
+!voice-pill/installer/prereqs/**/*.dll
+
+# Logs & local data
+*.log
+logs/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.swp
+
+# Playwright / test artifacts
+test-results/
+playwright-report/
