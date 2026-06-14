@@ -1,7 +1,9 @@
 # Secrets — never commit
 .env
-.env.*
+.env.local
+.env.*.local
 .env.bak.*
+!.env.example
 *.snippet
 
 # Python
