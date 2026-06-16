@@ -4,10 +4,10 @@
 
 **Push-to-talk speech-to-text for Windows.** Floating pill, system tray, inject into any focused field.
 
-[![CI](https://img.shields.io/github/actions/workflow/status/voidmute/Spotti-Voice/ci.yml?branch=main&label=CI)](https://github.com/voidmute/Spotti-Voice/actions/workflows/ci.yml)
-[![License](https://img.shields.io/github/license/voidmute/Spotti-Voice.svg)](LICENSE)
-[![Releases](https://img.shields.io/github/v/release/voidmute/Spotti-Voice?label=release)](https://github.com/voidmute/Spotti-Voice/releases)
-[![Spotti API](https://img.shields.io/badge/cloud-Spotti%20VPS-5865F2)](https://spottibot.duckdns.org)
+[![CI](https://github.com/voidmute/Spotti-Voice/actions/workflows/ci.yml/badge.svg)](https://github.com/voidmute/Spotti-Voice/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Releases](https://img.shields.io/badge/releases-GitHub-5865F2)](https://github.com/voidmute/Spotti-Voice/releases)
+[![Spotti Servers](https://img.shields.io/badge/cloud-Spotti%20Servers-5865F2)](https://spottibot.duckdns.org)
 
 [Скачать релиз](https://github.com/voidmute/Spotti-Voice/releases) · [Безопасность](SECURITY.md) · [Contributing](CONTRIBUTING.md)
 
@@ -22,7 +22,7 @@
 | Режим | Сеть | Языки |
 |-------|------|--------|
 | **Локально** | Офлайн после загрузки модели (~142 MB) | Русский (`whisper.cpp`) |
-| **Облако** | TLS на Spotti VPS | Много; вход через Discord |
+| **Облако** | TLS на Spotti Servers | Много; вход через Discord |
 
 В облаке **не нужен** OpenAI-ключ на ПК. Токены — Windows DPAPI.
 
@@ -33,7 +33,7 @@ flowchart LR
     Engine[Python engine :9777]
     Tray[Tray + Settings]
   end
-  subgraph cloud [Spotti VPS]
+  subgraph cloud [Spotti Servers]
     OAuth[Discord OAuth]
     STT[STT proxy]
   end
