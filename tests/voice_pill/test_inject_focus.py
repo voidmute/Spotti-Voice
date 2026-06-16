@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
+import sys
 from unittest.mock import patch
 
+import pytest
+
 from voice_pill.engine import inject as inject_mod
+
+pytestmark = pytest.mark.skipif(sys.platform != "win32", reason="Windows inject APIs only")
 from voice_pill.engine.inject import capture_inject_target, inject_text
 
 

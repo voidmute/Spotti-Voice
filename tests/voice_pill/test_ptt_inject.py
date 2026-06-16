@@ -3,9 +3,14 @@
 from __future__ import annotations
 
 import asyncio
+import sys
 from unittest.mock import AsyncMock
 
+import pytest
+
 from voice_pill.engine import inject as inject_mod
+
+pytestmark = pytest.mark.skipif(sys.platform != "win32", reason="Windows inject APIs only")
 from voice_pill.engine.audio_session import AudioSession
 from voice_pill.engine.inject import capture_inject_target
 

@@ -44,10 +44,10 @@ jobs:
           cache-dependency-path: voice-pill/requirements.txt
       - name: Install test dependencies
         run: |
-          pip install pytest httpx python-dotenv fastapi uvicorn
+          pip install pytest pytest-asyncio httpx python-dotenv fastapi uvicorn
           pip install -r voice-pill/requirements.txt
       - name: pytest voice_pill
-        run: pytest tests/voice_pill/ -q
+        run: pytest tests/voice_pill/ -o asyncio_mode=auto -q
         env:
           PYTHONPATH: .
 
