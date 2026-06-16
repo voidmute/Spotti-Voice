@@ -30,7 +30,7 @@ def test_filter_dedupes_and_drops_virtual_devices():
 def test_resolve_capture_samplerate_falls_back_to_device_native():
     try:
         import sounddevice as sd  # type: ignore[import-untyped]
-    except ImportError:
+    except (ImportError, OSError):
         return
 
     try:

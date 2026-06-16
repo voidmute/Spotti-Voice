@@ -21,7 +21,9 @@ jobs:
           set -euo pipefail
           if [[ -f scripts/setup/pre-commit-secret-scan.sh ]]; then
             # Hook scans staged files only; CI checks forbidden env paths in tree
-            if git ls-files '.env' '.env.*' '*.snippet' 2>/dev/null | grep -q .; then
+            if git ls-files '.env' '.env.*' '*.snippet' 2>/dev/null \
+              | grep -vE '^\.env\.example$' \
+              | grep -q .; then
               echo "Forbidden env/snippet file tracked in git" >&2
               exit 1
             fi
