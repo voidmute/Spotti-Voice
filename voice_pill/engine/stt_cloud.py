@@ -41,14 +41,24 @@ async def transcribe_pcm(pcm: bytes, *, language: str = "") -> str:
     if requested and requested != "auto":
         data["language"] = requested
 
-    async with httpx.AsyncClient(timeout=60.0) as client:
-        resp = await client.post(
-            f"{api_base()}/api/voice-app/stt",
-            headers={"Authorization": f"Bearer {token}"},
-            files=files,
-            data=data or None,
-        )
+    async def _post_stt(bearer: str) -> httpx.Response:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            return await client.post(
+                f"{api_base()}/api/voice-app/stt",
+                headers={"Authorization": f"Bearer {bearer}"},
+                files=files,
+                data=data or None,
+            )
+
+    try:
+        resp = await _post_stt(token)
         if resp.status_code == 401:
+            token = await ensure_access_token(force=True)
+            resp = await _post_stt(token)
+        if resp.status_code == 401:
+            from voice_pill.engine.cloud_auth import sign_out
+
+            sign_out()
             raise RuntimeError("cloud_auth_expired")
         if resp.status_code == 429:
             raise RuntimeError("cloud_rate_limited")
@@ -56,6 +66,8 @@ async def transcribe_pcm(pcm: bytes, *, language: str = "") -> str:
             logger.warning("Cloud STT HTTP %s", resp.status_code)
             raise RuntimeError("cloud_stt_failed")
         payload = resp.json()
+    except httpx.RequestError as exc:
+        raise RuntimeError("cloud_api_unreachable") from exc
     text = str(payload.get("text") or "").strip()
     if text:
         logger.debug("Cloud STT (%s): %s", requested, text[:80])

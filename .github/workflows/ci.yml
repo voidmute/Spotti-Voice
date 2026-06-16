@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  secret-scan:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan tracked files
+        run: |
+          set -euo pipefail
+          if [[ -f scripts/setup/pre-commit-secret-scan.sh ]]; then
+            # Hook scans staged files only; CI checks forbidden env paths in tree
+            if git ls-files '.env' '.env.*' '*.snippet' 2>/dev/null | grep -q .; then
+              echo "Forbidden env/snippet file tracked in git" >&2
+              exit 1
+            fi
+            if git grep -nE 'sk-[a-zA-Z0-9]{20,}' -- ':!*.lock' ':!package-lock.json' 2>/dev/null; then
+              echo "Likely API key in tracked source" >&2
+              exit 1
+            fi
+          fi
+          echo "secret-scan: OK"
+
+  python-tests:
+    name: Engine unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: voice-pill/requirements.txt
+      - name: Install test dependencies
+        run: |
+          pip install pytest httpx python-dotenv fastapi uvicorn
+          pip install -r voice-pill/requirements.txt
+      - name: pytest voice_pill
+        run: pytest tests/voice_pill/ -q
+        env:
+          PYTHONPATH: .
+
+  web-build:
+    name: Settings UI build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: voice-pill/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: voice-pill/web/package-lock.json
+      - run: npm ci
+      - run: npm run build

@@ -1,5 +1,7 @@
 # Spotti Voice — release checklist
 
+[![CI](https://img.shields.io/github/actions/workflow/status/voidmute/Spotti-Voice/ci.yml?branch=main&label=CI)](https://github.com/voidmute/Spotti-Voice/actions/workflows/ci.yml)
+
 ## Build
 
 ```bat
@@ -42,14 +44,14 @@ Deploy code only:
 
 Env key names (user sets manually on VPS):
 
-- `VOICE_APP_ALLOWED_USER_IDS` — optional allowlist (falls back to `ADMIN_ALLOWED_USER_IDS`)
+- `VOICE_APP_ALLOWED_USER_IDS` — optional extra allowlist; if unset, any member of your Discord server may sign in
 - `VOICE_APP_OAUTH_REDIRECT_URI` — default `spotti-voice://auth/callback`
 - Discord OAuth redirect must include that URI in Discord Developer Portal
 
 Verify routes (redacted):
 
 ```bash
-curl -sS "https://spotti.family/api/health"
+curl -sS "https://spottibot.duckdns.org/api/health"
 ```
 
 ## Export public repo

@@ -18,6 +18,7 @@ if errorlevel 1 (
 )
 
 echo [Spotti Voice] Stopping running engine...
+taskkill /F /IM "Spotti Voice Engine.exe" >nul 2>&1
 taskkill /F /IM "Spotti Voice.exe" >nul 2>&1
 taskkill /F /IM SpottiVoice.exe >nul 2>&1
 ping -n 2 127.0.0.1 >nul
@@ -30,17 +31,17 @@ if /I "%~1"=="--clean" (
   echo [Spotti Voice] Incremental build ^(pass --clean for full rebuild^).
 )
 
-echo [Spotti Voice] Building Spotti Voice.exe...
+echo [Spotti Voice] Building Spotti Voice Engine.exe...
 python -m PyInstaller spotti_voice_engine.spec --noconfirm %PYI_EXTRA%
 if errorlevel 1 (
   echo [Spotti Voice] PyInstaller failed.
   exit /b 1
 )
 
-if not exist "dist\Spotti Voice.exe" (
-  echo [Spotti Voice] dist\Spotti Voice.exe missing after build.
+if not exist "dist\Spotti Voice Engine.exe" (
+  echo [Spotti Voice] dist\Spotti Voice Engine.exe missing after build.
   exit /b 1
 )
 
-echo [Spotti Voice] Built dist\Spotti Voice.exe
+echo [Spotti Voice] Built dist\Spotti Voice Engine.exe
 exit /b 0

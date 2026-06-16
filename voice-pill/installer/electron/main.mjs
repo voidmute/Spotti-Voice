@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, nativeImage } from "electron";
 import { spawn } from "node:child_process";
 import fs from "node:fs";
 import fsp from "node:fs/promises";
@@ -43,14 +43,50 @@ function setupLog(message) {
   }
 }
 
+/** Portable installer root — files sit beside SpottiVoice-Setup.exe. */
+function installRootDir() {
+  return path.dirname(process.execPath);
+}
+
+/** SFX / portable layout: payload.zip + state files live beside the setup exe. */
+function resolveBundledPaths() {
+  const extractRoot = installRootDir();
+  return {
+    payloadArchive: path.join(extractRoot, "payload.zip"),
+    payloadDir: path.join(extractRoot, "payload"),
+    stateFile: path.join(extractRoot, "install-state.json"),
+    defaultDir: path.join(
+      process.env.LOCALAPPDATA || path.join(process.env.USERPROFILE || "", "AppData", "Local"),
+      "Spotti Voice",
+    ),
+  };
+}
+
+const bundledPaths = resolveBundledPaths();
 const setupConfig = loadSetupIni();
-const PAYLOAD_DIR = process.env.SPOTTI_SETUP_PAYLOAD_DIR || setupConfig?.payloadDir || "";
-const STATE_FILE = process.env.SPOTTI_SETUP_STATE_FILE || setupConfig?.stateFile || "";
+const PAYLOAD_DIR =
+  process.env.SPOTTI_SETUP_PAYLOAD_DIR || setupConfig?.payloadDir || bundledPaths.payloadDir;
+const PAYLOAD_ARCHIVE =
+  process.env.SPOTTI_SETUP_PAYLOAD_ARCHIVE ||
+  setupConfig?.payloadArchive ||
+  bundledPaths.payloadArchive;
+const STATE_FILE =
+  process.env.SPOTTI_SETUP_STATE_FILE || setupConfig?.stateFile || bundledPaths.stateFile;
 const DEFAULT_DIR =
-  process.env.SPOTTI_SETUP_DEFAULT_DIR ||
-  setupConfig?.defaultDir ||
-  path.join(process.env.ProgramFiles || "C:\\Program Files", "Spotti Voice");
+  process.env.SPOTTI_SETUP_DEFAULT_DIR || setupConfig?.defaultDir || bundledPaths.defaultDir;
 const APP_VERSION = process.env.SPOTTI_SETUP_VERSION || setupConfig?.version || "3.0.0";
+
+/** Branded UI shell — must stay in electron/dist beside icudtl.dat. */
+function uiExePath(rootDir) {
+  return path.join(
+    rootDir,
+    "electron",
+    "node_modules",
+    "electron",
+    "dist",
+    "Spotti Voice.exe",
+  );
+}
 
 setupLog(`setup shell start cwd=${process.cwd()} payload=${PAYLOAD_DIR || "(empty)"}`);
 
@@ -68,12 +104,68 @@ function pluginStateDir() {
 function bootstrapErrorMessage(code) {
   switch (String(code || "").trim()) {
     case "11":
-      return "Пакет установки повреждён (код 11). Скачайте Spotti Voice-Setup.exe заново.";
+      return "Установщик повреждён. Скачайте Spotti Voice заново с официального сайта.";
     case "12":
-      return "Не удалось распаковать окно установки (код 12). Скачайте установщик снова или добавьте его в исключения антивируса.";
+      return "Не удалось открыть окно установки. Скачайте установщик снова или добавьте его в исключения антивируса.";
     default:
       return "";
   }
+}
+
+function readPayloadManifest() {
+  const manifestPath = path.join(__dirname, "payload-manifest.json");
+  if (!fs.existsSync(manifestPath)) return null;
+  try {
+    let raw = fs.readFileSync(manifestPath, "utf8");
+    if (raw.charCodeAt(0) === 0xfeff) raw = raw.slice(1);
+    const parsed = JSON.parse(raw);
+    return {
+      version: typeof parsed.version === "string" ? parsed.version : APP_VERSION,
+      fileCount: Number(parsed.fileCount) || 0,
+      payloadBytes: Number(parsed.payloadBytes) || 0,
+    };
+  } catch (err) {
+    setupLog(`manifest parse failed: ${err}`);
+    return null;
+  }
+}
+
+async function extractPayloadArchive(archivePath, destDir) {
+  await ofsp.mkdir(destDir, { recursive: true });
+  const ps = [
+    "$ErrorActionPreference = 'Stop'",
+    `Expand-Archive -LiteralPath ${quotePsPath(archivePath)} -DestinationPath ${quotePsPath(destDir)} -Force`,
+  ].join("; ");
+  await new Promise((resolve, reject) => {
+    const child = spawn(
+      "powershell",
+      ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps],
+      { windowsHide: true, stdio: "ignore" },
+    );
+    child.on("close", (code) => {
+      if (code === 0) resolve();
+      else reject(new Error("extract_failed"));
+    });
+    child.on("error", reject);
+  });
+}
+
+async function ensurePayloadExtracted() {
+  const dest = PAYLOAD_DIR || path.join(path.dirname(PAYLOAD_ARCHIVE || __dirname), "payload");
+  const mainExe = uiExePath(dest);
+  if ((await pathExists(mainExe))) {
+    return dest;
+  }
+  if (!PAYLOAD_ARCHIVE || !(await pathExists(PAYLOAD_ARCHIVE))) {
+    throw new Error("Пакет приложения не найден. Скачайте установщик Spotti Voice заново.");
+  }
+  setupLog(`extracting payload archive -> ${dest}`);
+  sendProgress({ phase: "prepare", label: "Подготавливаем файлы…" });
+  await extractPayloadArchive(PAYLOAD_ARCHIVE, dest);
+  if (!(await pathExists(mainExe))) {
+    throw new Error("Не удалось распаковать приложение. Скачайте установщик заново.");
+  }
+  return dest;
 }
 
 async function resolveSetupDiagnostics() {
@@ -82,36 +174,45 @@ async function resolveSetupDiagnostics() {
     setupLog(`bootstrap error ${setupConfig?.bootstrapError}`);
     return { ok: false, error: bootstrap, logPath: SETUP_LOG };
   }
-  if (!PAYLOAD_DIR) {
+
+  const manifest = readPayloadManifest();
+  const version = manifest?.version || APP_VERSION;
+  const fileCount = manifest?.fileCount ?? 0;
+  const payloadBytes = manifest?.payloadBytes ?? 0;
+
+  if (PAYLOAD_ARCHIVE && !(await pathExists(PAYLOAD_ARCHIVE))) {
+    setupLog(`payload archive missing: ${PAYLOAD_ARCHIVE}`);
     return {
       ok: false,
-      error: "Не найден пакет установки. Запустите Spotti Voice-Setup.exe снова.",
+      error: "Пакет приложения не найден. Запустите установщик Spotti Voice снова.",
       logPath: SETUP_LOG,
     };
   }
-  if (!(await pathExists(PAYLOAD_DIR))) {
-    setupLog(`payload dir missing on disk: ${PAYLOAD_DIR}`);
-    return {
-      ok: false,
-      error: "Пакет установки не найден на диске. Запустите Spotti Voice-Setup.exe снова.",
-      logPath: SETUP_LOG,
-    };
+
+  if (!PAYLOAD_ARCHIVE) {
+    if (!PAYLOAD_DIR) {
+      return {
+        ok: false,
+        error: "Не найден пакет установки. Запустите установщик Spotti Voice снова.",
+        logPath: SETUP_LOG,
+      };
+    }
+    if (!(await pathExists(PAYLOAD_DIR))) {
+      setupLog(`payload dir missing on disk: ${PAYLOAD_DIR}`);
+      return {
+        ok: false,
+        error: "Пакет установки не найден. Запустите установщик Spotti Voice снова.",
+        logPath: SETUP_LOG,
+      };
+    }
   }
-  const mainExe = path.join(PAYLOAD_DIR, "Spotti Voice.exe");
-  if (!(await pathExists(mainExe))) {
-    return {
-      ok: false,
-      error: "В пакете нет Spotti Voice.exe (код 11). Скачайте установщик заново.",
-      logPath: SETUP_LOG,
-    };
-  }
-  const stats = await countPayloadFiles(PAYLOAD_DIR);
+
   return {
     ok: true,
-    version: APP_VERSION,
+    version,
     defaultDir: DEFAULT_DIR,
-    fileCount: stats.total,
-    payloadBytes: stats.bytes,
+    fileCount,
+    payloadBytes,
     logPath: SETUP_LOG,
   };
 }
@@ -120,9 +221,27 @@ function isTrustedSender(event) {
   return event.senderFrame === event.sender.mainFrame;
 }
 
+function resolveSetupIcon() {
+  const candidates = [
+    path.join(__dirname, "assets", "app-icon.png"),
+    path.join(installRootDir(), "assets", "app-icon.png"),
+    path.join(__dirname, "web", "dist", "white-only.png"),
+    path.join(installRootDir(), "web", "dist", "white-only.png"),
+  ];
+  for (const candidate of candidates) {
+    if (!fs.existsSync(candidate)) continue;
+    const image = nativeImage.createFromPath(candidate);
+    if (!image.isEmpty()) return image;
+  }
+  return null;
+}
+
 function uiIndexPath() {
-  const built = path.join(__dirname, "web", "dist", "index.html");
-  if (fs.existsSync(built)) return built;
+  const candidates = [__dirname, installRootDir()];
+  for (const root of candidates) {
+    const built = path.join(root, "web", "dist", "index.html");
+    if (fs.existsSync(built)) return built;
+  }
   return null;
 }
 
@@ -151,6 +270,7 @@ async function prepareInstallTarget(installDir) {
 
   setupLog(`prepare install target: ${installDir}`);
   await kill(["/F", "/IM", "Spotti Voice.exe", "/T"]);
+  await kill(["/F", "/IM", "Spotti Voice Engine.exe", "/T"]);
 
   const ps = [
     "$dir = " + quotePsPath(installDir),
@@ -168,7 +288,7 @@ async function prepareInstallTarget(installDir) {
     child.on("error", () => resolve());
   });
 
-  await sleep(900);
+  await sleep(400);
 }
 
 async function copyFileWithRetry(src, dest, relPath) {
@@ -327,9 +447,9 @@ async function writeInstallState(installDir, options) {
 
 async function verifyInstallHandoff(installDir) {
   const normalized = installDir.replace(/\r?\n/g, "").trim();
-  const mainExe = path.join(normalized, "Spotti Voice.exe");
+  const mainExe = uiExePath(normalized);
   if (!(await pathExists(mainExe))) {
-    throw new Error("После копирования не найден Spotti Voice.exe. Повторите установку.");
+    throw new Error("После копирования не найдено приложение. Повторите установку.");
   }
   const installDirFile = path.join(pluginStateDir(), "install-dir.txt");
   if (!fs.existsSync(installDirFile)) {
@@ -341,28 +461,76 @@ async function verifyInstallHandoff(installDir) {
   }
 }
 
+async function finalizeInstall(installDir) {
+  if (process.platform !== "win32") return;
+
+  const finalizeScript = path.join(__dirname, "scripts", "finalize-install.ps1");
+  if (!(await pathExists(finalizeScript))) {
+    setupLog(`finalize-install.ps1 not found at ${finalizeScript} — skipping shortcuts/registry`);
+    return;
+  }
+
+  setupLog(`finalizing install via ${finalizeScript}`);
+  sendProgress({ phase: "finalize", label: "Завершаем установку…" });
+
+  await new Promise((resolve, reject) => {
+    let stderr = "";
+    const child = spawn(
+      "powershell",
+      [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        finalizeScript,
+        "-InstallDir",
+        installDir,
+        "-PluginStateDir",
+        pluginStateDir(),
+        "-Version",
+        APP_VERSION,
+      ],
+      { windowsHide: true, stdio: ["ignore", "ignore", "pipe"] },
+    );
+    child.stderr?.on("data", (chunk) => {
+      stderr += String(chunk);
+    });
+    child.on("close", (code) => {
+      if (code === 0) resolve();
+      else {
+        if (stderr.trim()) setupLog(`finalize stderr: ${stderr.trim()}`);
+        reject(new Error(`finalize_failed_${code}`));
+      }
+    });
+    child.on("error", reject);
+  });
+}
+
 function createWindow() {
   const indexPath = uiIndexPath();
   if (!indexPath) {
     setupLog("setup UI index.html missing");
     showFallbackErrorPage(
-      "Интерфейс установки не найден (код 2). Скачайте Spotti Voice-Setup.exe заново.",
+      "Интерфейс установки не найден. Скачайте установщик Spotti Voice заново.",
       2,
     );
     return;
   }
 
+  const setupIcon = resolveSetupIcon();
+
   mainWindow = new BrowserWindow({
-    width: 720,
+    width: 880,
     height: 640,
-    minWidth: 560,
+    minWidth: 720,
     minHeight: 520,
-    backgroundColor: "#f4f2ee",
+    backgroundColor: "#121212",
     frame: false,
     titleBarStyle: "hidden",
     autoHideMenuBar: true,
-    title: "Spotti Voice",
-    show: false,
+    title: "Spotti Voice — установка",
+    icon: setupIcon ?? undefined,
+    show: true,
     webPreferences: {
       preload: path.join(__dirname, "preload.mjs"),
       contextIsolation: true,
@@ -372,7 +540,7 @@ function createWindow() {
   });
 
   mainWindow.once("ready-to-show", () => {
-    mainWindow?.show();
+    if (mainWindow && !mainWindow.isVisible()) mainWindow.show();
   });
 
   void mainWindow.loadFile(indexPath);
@@ -385,17 +553,17 @@ function createWindow() {
 function showFallbackErrorPage(message, exitCode) {
   const html = `<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8"><title>Spotti Voice</title>
 <style>
-  *{box-sizing:border-box} body{margin:0;font-family:Segoe UI,system-ui,sans-serif;background:#f4f2ee;color:#121218}
+  *{box-sizing:border-box} body{margin:0;font-family:"Segoe UI Variable",Segoe UI,system-ui,sans-serif;background:#12121a;color:oklch(0.94 0.008 278)}
   .wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
-  .card{max-width:520px;width:100%;background:#fff;border:1px solid #e6e2da;border-radius:14px;padding:24px;box-shadow:0 8px 28px rgba(18,18,24,.08)}
-  h1{margin:0 0 12px;font-size:1.25rem} p{margin:0 0 16px;line-height:1.5;color:#4a4a56;font-size:.95rem}
-  button{padding:10px 16px;border-radius:8px;border:1px solid #121218;background:#121218;color:#fff;font:inherit;cursor:pointer}
+  .card{max-width:520px;width:100%;background:linear-gradient(165deg,oklch(0.19 0.02 278),oklch(0.155 0.016 278));border:1px solid oklch(0.98 0.01 278 / 0.13);border-radius:18px;padding:24px;box-shadow:0 16px 40px oklch(0.06 0.02 278 / 0.55)}
+  h1{margin:0 0 12px;font-size:1.25rem} p{margin:0 0 16px;line-height:1.5;color:oklch(0.68 0.02 278);font-size:.95rem}
+  button{padding:10px 18px;border-radius:12px;border:none;background:linear-gradient(135deg,oklch(0.68 0.21 276),oklch(0.52 0.18 290));color:#fff;font:inherit;font-weight:700;cursor:pointer}
 </style></head><body><div class="wrap"><div class="card"><h1>Ошибка установки</h1><p>${message.replace(/</g, "&lt;")}</p>
 <button type="button" onclick="window.close()">Закрыть</button></div></div></body></html>`;
   mainWindow = new BrowserWindow({
     width: 560,
     height: 420,
-    backgroundColor: "#f4f2ee",
+    backgroundColor: "#12121a",
     autoHideMenuBar: true,
     title: "Spotti Voice",
     webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true },
@@ -433,16 +601,14 @@ ipcMain.handle("setup:pick-install-dir", async (event) => {
 
 ipcMain.handle("setup:install", async (event, rawOptions) => {
   if (!isTrustedSender(event)) throw new Error("Untrusted IPC sender");
-  if (!PAYLOAD_DIR || !(await pathExists(PAYLOAD_DIR))) {
-    throw new Error("Пакет установки не найден. Запустите Spotti Voice-Setup.exe заново.");
-  }
+  const payloadRoot = await ensurePayloadExtracted();
   const options =
     rawOptions && typeof rawOptions === "object"
       ? rawOptions
       : { installDir: DEFAULT_DIR, desktopShortcut: true, startMenuShortcut: true, launchAfter: true };
   const installDir = typeof options.installDir === "string" ? options.installDir.trim() : "";
   if (!installDir) {
-    throw new Error("install_dir_required");
+    throw new Error("Укажите папку установки.");
   }
 
   installCancelled = false;
@@ -450,16 +616,18 @@ ipcMain.handle("setup:install", async (event, rawOptions) => {
 
   try {
     await prepareInstallTarget(installDir);
-    await copyPayload({ sourceDir: PAYLOAD_DIR, targetDir: installDir });
+    await copyPayload({ sourceDir: payloadRoot, targetDir: installDir });
     await writeInstallState(installDir, options);
     await verifyInstallHandoff(installDir);
+    await finalizeInstall(installDir);
     installFinished = true;
     sendProgress({ phase: "done", installDir });
 
     if (options.launchAfter) {
-      const exe = path.join(installDir, "Spotti Voice.exe");
+      const exe = uiExePath(installDir);
+      const electronDir = path.join(installDir, "electron");
       if (await pathExists(exe)) {
-        spawn(exe, [], { detached: true, stdio: "ignore" }).unref();
+        spawn(exe, [electronDir], { detached: true, stdio: "ignore" }).unref();
       }
     }
 
@@ -480,10 +648,13 @@ ipcMain.handle("setup:install", async (event, rawOptions) => {
       throw new Error("Недостаточно места на диске для установки.");
     }
     if (code === "EBUSY") {
-      const busyFile = err && typeof err === "object" && err.busyFile ? String(err.busyFile) : "";
-      const hint = busyFile ? `\n\nФайл: ${busyFile}` : "";
       throw new Error(
-        `Файлы заняты другим процессом. Закройте Spotti Voice и повторите установку.${hint}`,
+        "Файлы заняты другим процессом. Закройте Spotti Voice и повторите установку.",
+      );
+    }
+    if (String(err?.message || err).startsWith("finalize_failed_")) {
+      throw new Error(
+        "Не удалось завершить установку (ярлыки и реестр). Повторите установку.",
       );
     }
     throw err;
@@ -522,6 +693,9 @@ ipcMain.handle("setup:window-close", (event) => {
 });
 
 app.whenReady().then(() => {
+  if (process.platform === "win32") {
+    app.setAppUserModelId("com.spotti.voice.setup");
+  }
   createWindow();
 });
 

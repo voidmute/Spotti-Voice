@@ -9,15 +9,19 @@ if /I "%~1"=="-SkipAppBuild" set "SKIP_APP=1"
 for /f "usebackq delims=" %%V in ("installer\VERSION") do set "APP_VERSION=%%V"
 if not defined APP_VERSION set "APP_VERSION=0.1.0.0"
 
-echo [SPOTTI] Building SpottiVoice-Setup.exe (NSIS + Electron UI) v%APP_VERSION%
+echo [SPOTTI] Building SpottiVoice-Setup.exe (x64 Electron portable) v%APP_VERSION%
 
 if "%SKIP_APP%"=="0" (
   echo [SPOTTI] Building application payload...
   call "%~dp0build-exe.bat"
   if errorlevel 1 exit /b 1
 ) else (
-  if not exist "dist\Spotti Voice.exe" (
-    echo [SPOTTI] dist\Spotti Voice.exe missing. Run build-exe.bat first or omit -SkipAppBuild.
+  if not exist "dist\electron\node_modules\electron\dist\Spotti Voice.exe" (
+    echo [SPOTTI] dist\electron\node_modules\electron\dist\Spotti Voice.exe missing. Run build-exe.bat first or omit -SkipAppBuild.
+    exit /b 1
+  )
+  if not exist "dist\Spotti Voice Engine.exe" (
+    echo [SPOTTI] dist\Spotti Voice Engine.exe missing. Run build-exe.bat first or omit -SkipAppBuild.
     exit /b 1
   )
 )
@@ -27,6 +31,10 @@ if errorlevel 1 (
   echo [SPOTTI] Node.js/npm required for setup UI.
   exit /b 1
 )
+
+echo [SPOTTI] Syncing brand assets...
+python "scripts\make-icon.py"
+if errorlevel 1 exit /b 1
 
 echo [SPOTTI] Building setup UI (React)...
 pushd installer\web
@@ -48,7 +56,8 @@ if not exist "installer\electron\node_modules\electron\dist\resources.pak" (
   popd
 )
 
-echo [SPOTTI] Staging NSIS payload...
+echo [SPOTTI] Staging installer payload...
+if not exist "dist\launch-ui.cmd" copy /Y "launch-ui.cmd" "dist\launch-ui.cmd" >nul
 if exist "installer\staging" rmdir /S /Q "installer\staging" 2>nul
 mkdir "installer\staging\payload" 2>nul
 mkdir "installer\staging\setup-ui" 2>nul
@@ -60,6 +69,19 @@ if errorlevel 8 (
 )
 if exist "installer\staging\payload\electron\.user-data" rmdir /S /Q "installer\staging\payload\electron\.user-data" 2>nul
 del /F /Q "installer\staging\payload\*.old" 2>nul
+
+if exist "installer\staging\payload\electron\.user-data" rmdir /S /Q "installer\staging\payload\electron\.user-data" 2>nul
+del /F /Q "installer\staging\payload\*.old" 2>nul
+
+echo [SPOTTI] Branding payload electron.exe (fallback launcher icon)...
+node "scripts\brand-electron-shell.mjs" "installer\staging\payload\electron\node_modules\electron\dist\electron.exe" "installer\staging\payload\electron\node_modules\electron\dist\electron.exe" "Spotti Voice" "electron.exe"
+if errorlevel 1 exit /b 1
+
+echo [SPOTTI] Writing payload manifest and archive...
+powershell -NoProfile -ExecutionPolicy Bypass -File "installer\scripts\write-payload-manifest.ps1" -PayloadDir "installer\staging\payload" -OutFile "installer\staging\setup-ui\payload-manifest.json" -Version "%APP_VERSION%"
+if errorlevel 1 exit /b 1
+powershell -NoProfile -ExecutionPolicy Bypass -File "installer\scripts\pack-payload.ps1" -PayloadDir "installer\staging\payload" -ZipOut "installer\staging\payload.zip"
+if errorlevel 1 exit /b 1
 
 copy /Y "installer\electron\package.json" "installer\staging\setup-ui\" >nul
 copy /Y "installer\electron\package-lock.json" "installer\staging\setup-ui\" >nul 2>nul
@@ -74,6 +96,10 @@ if not exist "installer\staging\setup-ui\runtime\electron.exe" (
   exit /b 1
 )
 
+echo [SPOTTI] Branding setup wizard shell...
+node "scripts\brand-electron-shell.mjs" "installer\staging\setup-ui\runtime\electron.exe" "installer\staging\setup-ui\runtime\Spotti Voice Setup.exe" "Spotti Voice Setup" "Spotti Voice Setup.exe"
+if errorlevel 1 exit /b 1
+
 echo [SPOTTI] Bundling MSVC runtime DLLs...
 powershell -NoProfile -ExecutionPolicy Bypass -File "installer\scripts\stage-vc-runtime.ps1" -TargetList "installer\staging\setup-ui\runtime;installer\staging\payload"
 if errorlevel 1 (
@@ -81,34 +107,13 @@ if errorlevel 1 (
   exit /b 1
 )
 
-set "MAKENSIS=makensis"
-where makensis >nul 2>&1
-if errorlevel 1 (
-  if exist "tools\nsis\nsis-3.08\makensis.exe" (
-    set "MAKENSIS=%~dp0tools\nsis\nsis-3.08\makensis.exe"
-  ) else if exist "tools\nsis\nsis-3.08\Bin\makensis.exe" (
-    set "MAKENSIS=%~dp0tools\nsis\nsis-3.08\Bin\makensis.exe"
-  ) else (
-    echo [SPOTTI] NSIS not found. Install NSIS 3.x or extract to tools\nsis\nsis-3.08\
-    exit /b 1
-  )
-)
-
 if not exist "dist-setup" mkdir "dist-setup"
-echo [SPOTTI] Compiling NSIS installer...
-"%MAKENSIS%" /V2 "installer\nsis\SpottiVoice.nsi"
-if errorlevel 1 (
-  echo [SPOTTI] makensis failed.
-  exit /b 1
-)
 
-if exist "dist-setup\SpottiVoice-Setup.exe" del /F /Q "dist-setup\SpottiVoice-Setup.exe" >nul 2>&1
-move /Y "dist-setup\SpottiVoice-Setup.tmp.exe" "dist-setup\SpottiVoice-Setup.exe" >nul 2>&1
-if exist "dist-setup\SpottiVoice-Setup.tmp.exe" (
-  echo.
-  echo [WARN] SpottiVoice-Setup.exe is locked.
-  echo [OK]   dist-setup\SpottiVoice-Setup.tmp.exe
-  exit /b 0
+echo [SPOTTI] Building x64 SpottiVoice-Setup.exe (Electron portable)...
+powershell -NoProfile -ExecutionPolicy Bypass -File "installer\scripts\build-sfx-installer.ps1" -StagingDir "installer\staging" -OutFile "dist-setup\SpottiVoice-Setup.exe" -Version "%APP_VERSION%"
+if errorlevel 1 (
+  echo [SPOTTI] build-sfx-installer.ps1 failed.
+  exit /b 1
 )
 
 echo.

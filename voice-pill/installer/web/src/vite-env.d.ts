@@ -2,6 +2,7 @@
 
 interface SetupProgress {
   phase: string;
+  label?: string;
   installDir?: string;
   copied?: number;
   total?: number;

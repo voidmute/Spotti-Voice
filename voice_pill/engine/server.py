@@ -131,10 +131,28 @@ async def _on_utterance(pcm: bytes) -> None:
     except Exception as exc:
         logger.warning("STT failed: %s", exc)
         msg = str(exc)
-        if "cloud_auth" in msg or "auth_required" in msg or "auth_expired" in msg:
+        if (
+            "cloud_auth" in msg
+            or "auth_required" in msg
+            or "auth_expired" in msg
+            or "401" in msg
+            or "Unauthorized" in msg
+        ):
             await _broadcast_error(
                 "Сессия облака истекла. Войдите снова в Настройках.",
                 code="cloud_auth_required",
+            )
+            return
+        if "rate_limit" in msg or "429" in msg:
+            await _broadcast_error(
+                "Слишком много запросов. Подождите минуту.",
+                code="cloud_rate_limited",
+            )
+            return
+        if "unreachable" in msg.lower() or "connect" in msg.lower():
+            await _broadcast_error(
+                "Нет связи с сервером Spotti. Проверьте интернет.",
+                code="cloud_api_unreachable",
             )
             return
         if "whisper.cpp" in msg.lower() or "не установлен" in msg.lower():
@@ -214,6 +232,16 @@ async def _wait_for_audio(*, timeout: float = 10.0) -> bool:
     return _audio is not None
 
 
+async def _warm_cloud_on_start() -> None:
+    await asyncio.sleep(0)
+    settings = load_settings()
+    if settings.get("sttMode", "cloud") != "cloud":
+        return
+    from voice_pill.engine.cloud_auth import warm_cloud_session
+
+    await warm_cloud_session()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global _audio, _audio_init_task
@@ -227,6 +255,7 @@ async def lifespan(app: FastAPI):
     _audio_init_task = asyncio.create_task(
         _deferred_engine_startup(device_index),
     )
+    asyncio.create_task(_warm_cloud_on_start())
     yield
     ptt_hotkey.stop_fallback()
     if _audio_init_task is not None and not _audio_init_task.done():
@@ -278,8 +307,17 @@ class CloudCallbackBody(BaseModel):
 
 
 @app.get("/api/cloud/status")
-def cloud_status() -> dict[str, Any]:
-    from voice_pill.engine.cloud_auth import cloud_session, cloud_stt_ready, cloud_user_label
+async def cloud_status() -> dict[str, Any]:
+    from voice_pill.engine.cloud_auth import (
+        cloud_session,
+        cloud_stt_ready,
+        cloud_user_label,
+        warm_cloud_session,
+    )
+
+    creds = cloud_session()
+    if creds and creds.get("refresh_token"):
+        await warm_cloud_session()
 
     return {
         "ready": cloud_stt_ready(),
@@ -288,11 +326,22 @@ def cloud_status() -> dict[str, Any]:
     }
 
 
+@app.post("/api/cloud/auth/warm")
+async def cloud_auth_warm() -> dict[str, bool]:
+    from voice_pill.engine.cloud_auth import warm_cloud_session
+
+    return {"ok": await warm_cloud_session()}
+
+
 @app.post("/api/cloud/auth/begin")
 async def cloud_auth_begin() -> dict[str, str]:
     from voice_pill.engine.cloud_auth import begin_oauth
 
-    return await begin_oauth()
+    try:
+        return await begin_oauth()
+    except RuntimeError as exc:
+        detail = str(exc) or "oauth_start_failed"
+        raise HTTPException(status_code=502, detail=detail) from exc
 
 
 @app.post("/api/cloud/auth/finish")

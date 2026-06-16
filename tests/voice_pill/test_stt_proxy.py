@@ -45,3 +45,33 @@ async def test_transcribe_pcm_requires_auth():
     with patch("voice_pill.engine.stt_cloud.cloud_stt_ready", return_value=False):
         with pytest.raises(RuntimeError, match="cloud_auth"):
             await transcribe_pcm(_tiny_pcm())
+
+
+@pytest.mark.asyncio
+async def test_transcribe_pcm_retries_after_401():
+    mock_ok = MagicMock()
+    mock_ok.status_code = 200
+    mock_ok.json.return_value = {"text": "retry ok"}
+
+    mock_unauth = MagicMock()
+    mock_unauth.status_code = 401
+
+    mock_client = AsyncMock()
+    mock_client.post = AsyncMock(side_effect=[mock_unauth, mock_ok])
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=False)
+
+    ensure = AsyncMock(side_effect=["stale", "fresh"])
+
+    with (
+        patch("voice_pill.engine.stt_cloud.cloud_stt_ready", return_value=True),
+        patch("voice_pill.engine.stt_cloud.ensure_access_token", ensure),
+        patch("voice_pill.engine.stt_cloud.httpx.AsyncClient", return_value=mock_client),
+    ):
+        text = await transcribe_pcm(_tiny_pcm(), language="ru")
+
+    assert text == "retry ok"
+    assert ensure.await_count == 2
+    assert ensure.await_args_list[1].kwargs.get("force") is True
+    assert mock_client.post.await_count == 2
+

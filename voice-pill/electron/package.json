@@ -10,5 +10,8 @@
   "dependencies": {
     "electron": "^35.1.5",
     "koffi": "^2.11.0"
+  },
+  "devDependencies": {
+    "rcedit": "^4.0.1"
   }
 }

@@ -305,7 +305,7 @@ export function SettingsApp() {
           ) : (
             <div className="settings-shell">
               <div
-                className={`settings-stage${isDevice ? " settings-stage--scroll" : ""}`}
+                className={`settings-stage${isDevice || isCloud ? " settings-stage--scroll" : ""}`}
                 role="tabpanel"
                 id={
                   isCloud

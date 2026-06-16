@@ -1,0 +1,5 @@
+{
+  "name": "spotti-voice-setup-bootstrap",
+  "private": true,
+  "main": "bootstrap.cjs"
+}

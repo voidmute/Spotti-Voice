@@ -1,27 +1,62 @@
+<div align="center">
+
 # Spotti Voice
 
-Desktop speech-to-text overlay for Windows. Hold a hotkey, speak, and text is injected into the focused field.
+**Push-to-talk speech-to-text for Windows.** Floating pill, system tray, inject into any focused field.
 
-## Install (end users)
+[![CI](https://img.shields.io/github/actions/workflow/status/voidmute/Spotti-Voice/ci.yml?branch=main&label=CI)](https://github.com/voidmute/Spotti-Voice/actions/workflows/ci.yml)
+[![License](https://img.shields.io/github/license/voidmute/Spotti-Voice.svg)](LICENSE)
+[![Releases](https://img.shields.io/github/v/release/voidmute/Spotti-Voice?label=release)](https://github.com/voidmute/Spotti-Voice/releases)
+[![Spotti API](https://img.shields.io/badge/cloud-Spotti%20VPS-5865F2)](https://spottibot.duckdns.org)
 
-1. Download **SpottiVoice-Setup.exe** from [GitHub Releases](https://github.com/voidmute/Spotti-Voice/releases).
-2. Run the installer (no Python or Node required).
-3. Open **Spotti Voice** from the Start menu.
-4. For **Cloud** recognition: Settings → Облако → **Sign in with Discord** (Spotti account required).
-5. For **Local** recognition: Settings → Локально → download the Whisper model on first use (~142 MB).
+[Скачать релиз](https://github.com/voidmute/Spotti-Voice/releases) · [Безопасность](SECURITY.md) · [Contributing](CONTRIBUTING.md)
 
-## Cloud vs local
+</div>
 
-| Mode | Network | Languages |
-|------|---------|-----------|
-| **Cloud** | Audio sent to Spotti-hosted STT proxy (TLS) | Many (auto or fixed) |
-| **Local** | Offline after model download | Russian only |
+---
 
-Cloud mode does **not** use your OpenAI key. Authentication is Discord OAuth; tokens are stored encrypted with Windows DPAPI.
+## Зачем
 
-## Build from source (developers)
+Говоришь — текст попадает в Discord, браузер, IDE, куда угодно, пока курсор в поле ввода. Два режима:
 
-Requirements: Windows 10+, Python 3.11+, Node 18+, NSIS 3.x (for installer).
+| Режим | Сеть | Языки |
+|-------|------|--------|
+| **Локально** | Офлайн после загрузки модели (~142 MB) | Русский (`whisper.cpp`) |
+| **Облако** | TLS на Spotti VPS | Много; вход через Discord |
+
+В облаке **не нужен** OpenAI-ключ на ПК. Токены — Windows DPAPI.
+
+```mermaid
+flowchart LR
+  subgraph pc [Ваш ПК]
+    Pill[Pill overlay]
+    Engine[Python engine :9777]
+    Tray[Tray + Settings]
+  end
+  subgraph cloud [Spotti VPS]
+    OAuth[Discord OAuth]
+    STT[STT proxy]
+  end
+  Pill --> Engine
+  Tray --> Engine
+  Engine -->|Облако| OAuth
+  Engine -->|audio| STT
+  Engine -->|inject| Focus[Focused app]
+```
+
+## Установка (пользователи)
+
+1. Скачайте **`SpottiVoice-Setup.exe`** из [Releases](https://github.com/voidmute/Spotti-Voice/releases).
+2. Запустите установщик (Python/Node не нужны).
+3. Откройте **Spotti Voice** из меню Пуск.
+4. **Облако:** Настройки → Облако → **Войти через Discord**.
+5. **Локально:** Настройки → Локально → при первом запуске скачается модель.
+
+Горячая клавиша по умолчанию: **Ctrl+Shift+Space** (toggle PTT). Меню в трее → **Setup**.
+
+## Сборка из исходников
+
+**Требования:** Windows 10+, Python 3.11+, Node 20+, NSIS 3.x (для установщика).
 
 ```bat
 cd voice-pill
@@ -29,25 +64,37 @@ build-exe.bat
 build-setup.bat
 ```
 
-Output: `dist-setup\SpottiVoice-Setup.exe`
+Артефакт: `voice-pill\dist-setup\SpottiVoice-Setup.exe`
 
-Dev run without installer:
+Разработка без установщика:
 
 ```bat
 cd voice-pill
 run.bat
 ```
 
-## Environment (dev only)
+Подробнее: [voice-pill/README.md](voice-pill/README.md) (в монорепо Spotti) · [RELEASE.md](voice-pill/RELEASE.md)
 
-Copy `.env.example` to `voice-pill/.env`. Set `SPOTTI_VOICE_API_BASE` if testing against a staging API. Never commit `.env`.
+## Окружение (только разработка)
 
-## Security
+Скопируйте `.env.example` → `voice-pill/.env`. Ключ `SPOTTI_VOICE_API_BASE` — если тестируете staging API. **Не коммитьте `.env`.**
 
-- Engine listens on `127.0.0.1:9777` only.
-- Electron uses `contextIsolation: true` and a narrow preload bridge.
-- OAuth callback: `spotti-voice://auth/callback` (registered by installer).
+## Безопасность
 
-## License
+- Движок слушает только `127.0.0.1:9777`.
+- Electron: `contextIsolation: true`, узкий preload-мост.
+- OAuth: `spotti-voice://auth/callback` (регистрирует установщик); в dev Electron — `http://127.0.0.1:9780/auth/callback`.
 
-MIT — see [LICENSE](LICENSE).
+Полный текст: [SECURITY.md](SECURITY.md)
+
+## CI
+
+На каждый push/PR в `main`: secret scan, `pytest tests/voice_pill/`, сборка web UI. См. [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
+
+## Связь с Spotti
+
+Публичный клиент + этот репозиторий. Сервер OAuth/STT — приватный монорепо [Spotti](https://github.com/voidmute/Spotti) (`spotti/api/routes/voice_app.py`). Экспорт из монорепо: `scripts/migrate/export-voice-public.ps1`.
+
+## Лицензия
+
+[MIT](LICENSE)

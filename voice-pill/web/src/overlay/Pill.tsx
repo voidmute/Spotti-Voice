@@ -5,7 +5,22 @@ type EngineState = "idle" | "listening" | "processing" | "error";
 
 const PILL_HEIGHT = 48;
 const ERROR_DISMISS_MS = 8000;
-const ERROR_BUBBLE_FALLBACK = 88;
+const PILL_MIN_WIDTH = 143;
+const PILL_MAX_WIDTH = 168;
+
+function compactErrorMessage(message: string): string {
+  const trimmed = message.trim();
+  if (trimmed.includes("Облачное распознавание")) {
+    return "Облако недоступно";
+  }
+  if (trimmed.includes("Нет связи с движком")) {
+    return "Нет связи с движком";
+  }
+  if (trimmed.length > 36) {
+    return `${trimmed.slice(0, 35)}…`;
+  }
+  return trimmed;
+}
 
 const STATE_LABEL: Record<EngineState, string> = {
   idle: "Готов",
@@ -23,24 +38,33 @@ const PILL_FILL: Record<EngineState, string> = {
   idle: "#121212",
   listening: "#121212",
   processing: "#141414",
-  error: "#1a1214",
+  error: "#121212",
 };
 
-type PillSvgBackdropProps = {
+type MatteRingFrameProps = {
   width: number;
+  height: number;
   fill: string;
+  className?: string;
+  shape?: "stadium" | "rounded";
 };
 
-/** Matte 1px white ring — fills only, no stroke (avoids corner fringe). */
-function PillSvgBackdrop({ width, fill }: PillSvgBackdropProps) {
+/** Matte 1px white ring — stadium matches the main pill capsule. */
+function MatteRingFrame({
+  width,
+  height,
+  fill,
+  className,
+  shape = "stadium",
+}: MatteRingFrameProps) {
   const w = Math.max(1, width);
-  const h = PILL_HEIGHT;
-  const r = h / 2;
+  const h = Math.max(1, height);
+  const r = shape === "stadium" ? h / 2 : Math.min(h / 2, 14);
   const ring = 1;
 
   return (
     <svg
-      className="pill-frame"
+      className={className}
       width={w}
       height={h}
       viewBox={`0 0 ${w} ${h}`}
@@ -53,8 +77,8 @@ function PillSvgBackdrop({ width, fill }: PillSvgBackdropProps) {
         y={ring}
         width={w - ring * 2}
         height={h - ring * 2}
-        rx={r - ring}
-        ry={r - ring}
+        rx={Math.max(0, r - ring)}
+        ry={Math.max(0, r - ring)}
         fill="#ffffff"
       />
       <rect
@@ -62,8 +86,8 @@ function PillSvgBackdrop({ width, fill }: PillSvgBackdropProps) {
         y={ring * 2}
         width={w - ring * 4}
         height={h - ring * 4}
-        rx={r - ring * 2}
-        ry={r - ring * 2}
+        rx={Math.max(0, r - ring * 2)}
+        ry={Math.max(0, r - ring * 2)}
         fill={fill}
       />
     </svg>
@@ -149,80 +173,127 @@ function PillContent({ state, level, reduced }: PillContentProps) {
   );
 }
 
+type ErrorPhase = "enter" | "exit";
+
 type PillFaceProps = {
   state: EngineState;
   level: number;
   reduced: boolean;
   label: string;
   width: number;
+  errorMessage?: string | null;
+  errorPhase?: ErrorPhase;
+  onErrorDismiss?: () => void;
+  onErrorExitComplete?: () => void;
 };
 
-function PillFace({ state, level, reduced, label, width }: PillFaceProps) {
+function PillFace({
+  state,
+  level,
+  reduced,
+  label,
+  width,
+  errorMessage,
+  errorPhase = "enter",
+  onErrorDismiss,
+  onErrorExitComplete,
+}: PillFaceProps) {
+  const hasError = Boolean(errorMessage);
+
   return (
-    <div className={`pill ${state}`} aria-label={`Spotti Voice ${label}`}>
-      <PillSvgBackdrop width={width} fill={PILL_FILL[state]} />
-      <div className="pill-inner">
-        <PillContent state={state} level={level} reduced={reduced} />
+    <div
+      className={`pill ${state}${hasError ? " pill--has-error" : ""}`}
+      style={{ height: PILL_HEIGHT, width }}
+      aria-label={`Spotti Voice ${label}`}
+    >
+      <MatteRingFrame
+        className="pill-frame"
+        width={width}
+        height={PILL_HEIGHT}
+        fill={PILL_FILL[state]}
+        shape="stadium"
+      />
+      <div className="pill-inner pill-inner--controls">
+        {hasError && errorMessage ? (
+          <>
+            <img className="pill-logo" src="./white-only.png" alt="" aria-hidden />
+            <button
+              type="button"
+              className={`pill-error-inline pill-error-inline--${errorPhase}`}
+              title={errorMessage}
+              onClick={() => {
+                void window.spottiVoice?.openSettings?.();
+                onErrorDismiss?.();
+              }}
+              onAnimationEnd={(event) => {
+                if (
+                  errorPhase === "exit" &&
+                  event.animationName === "pill-error-out" &&
+                  event.target === event.currentTarget
+                ) {
+                  onErrorExitComplete?.();
+                }
+              }}
+              aria-live="polite"
+            >
+              {compactErrorMessage(errorMessage)}
+            </button>
+          </>
+        ) : (
+          <PillContent state={state} level={level} reduced={reduced} />
+        )}
       </div>
     </div>
-  );
-}
-
-type ErrorBubbleProps = {
-  message: string;
-  onDismiss: () => void;
-};
-
-function ErrorBubble({ message, onDismiss }: ErrorBubbleProps) {
-  return (
-    <button
-      type="button"
-      className="pill-error-bubble"
-      onClick={() => {
-        void window.spottiVoice?.openSettings?.();
-        onDismiss();
-      }}
-      aria-live="polite"
-    >
-      <span className="pill-error-bubble__text">{message}</span>
-      <span className="pill-error-bubble__arrow" aria-hidden />
-    </button>
   );
 }
 
 export function PillOverlay() {
   const shellRef = useRef<HTMLDivElement>(null);
   const probeRef = useRef<HTMLDivElement>(null);
-  const errorStackRef = useRef<HTMLDivElement>(null);
   const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pillWidthRef = useRef(PILL_MIN_WIDTH);
+  const canonicalWidthRef = useRef(0);
+  const lastOverlaySizeRef = useRef({ w: 0, h: PILL_HEIGHT });
+  const connectedRef = useRef(false);
   const [state, setState] = useState<EngineState>("idle");
   const [displayLevel, setDisplayLevel] = useState(0);
   const levelTargetRef = useRef(0);
   const [connected, setConnected] = useState(false);
-  const [pillWidth, setPillWidth] = useState(143);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [pillWidth, setPillWidth] = useState(PILL_MIN_WIDTH);
+  const [errorBubble, setErrorBubble] = useState<{
+    message: string;
+    phase: ErrorPhase;
+  } | null>(null);
+
+  pillWidthRef.current = pillWidth;
+  connectedRef.current = connected;
 
   const syncOverlaySize = useCallback(() => {
-    const shell = shellRef.current;
     const probe = probeRef.current;
-    const errorStack = errorStackRef.current;
     const setOverlaySize = window.spottiVoice?.setOverlaySize;
-    if (!shell || !probe || !setOverlaySize) return;
+    if (!probe || !setOverlaySize) return;
 
-    const pillRect = probe.getBoundingClientRect();
-    const errorRect = errorStack?.getBoundingClientRect();
-    const width = Math.ceil(
-      Math.max(pillRect.width, errorRect?.width ?? 0, 143),
+    const measured = Math.min(
+      PILL_MAX_WIDTH,
+      Math.max(PILL_MIN_WIDTH, Math.ceil(probe.getBoundingClientRect().width)),
     );
-    const bubbleHeight = errorMessage
-      ? Math.ceil(errorRect?.height || ERROR_BUBBLE_FALLBACK)
-      : 0;
-    const height = Math.ceil(PILL_HEIGHT + bubbleHeight);
-    if (width < 1 || height < PILL_HEIGHT) return;
+    if (canonicalWidthRef.current <= 0) {
+      canonicalWidthRef.current = measured;
+    } else if (!errorBubble) {
+      canonicalWidthRef.current = measured;
+    }
+    const width = canonicalWidthRef.current;
+    const height = PILL_HEIGHT;
+    const last = lastOverlaySizeRef.current;
+    if (last.w === width && last.h === height) return;
+    lastOverlaySizeRef.current = { w: width, h: height };
 
-    setPillWidth(Math.ceil(pillRect.width) || width);
+    if (pillWidthRef.current !== width) {
+      pillWidthRef.current = width;
+      setPillWidth(width);
+    }
     void setOverlaySize(width, height);
-  }, [errorMessage]);
+  }, [errorBubble]);
 
   const clearErrorTimer = useCallback(() => {
     if (errorTimerRef.current) {
@@ -231,54 +302,71 @@ export function PillOverlay() {
     }
   }, []);
 
-  const dismissError = useCallback(() => {
+  const finalizeErrorExit = useCallback(() => {
     clearErrorTimer();
-    setErrorMessage(null);
+    setErrorBubble(null);
   }, [clearErrorTimer]);
+
+  const beginErrorExit = useCallback(() => {
+    setErrorBubble((prev) => (prev ? { ...prev, phase: "exit" } : null));
+  }, []);
+
+  const dismissError = useCallback(() => {
+    if (!errorBubble || errorBubble.phase === "exit") return;
+    clearErrorTimer();
+    beginErrorExit();
+  }, [beginErrorExit, clearErrorTimer, errorBubble]);
 
   const showApiError = useCallback(
     (message: string) => {
       clearErrorTimer();
+      setErrorBubble((prev) => {
+        if (prev?.phase === "enter" && prev.message === message) {
+          return prev;
+        }
+        return { message, phase: "enter" };
+      });
+      lastOverlaySizeRef.current = { w: 0, h: PILL_HEIGHT };
       const setOverlaySize = window.spottiVoice?.setOverlaySize;
       if (setOverlaySize) {
         void setOverlaySize(
-          Math.max(pillWidth, 143),
-          PILL_HEIGHT + ERROR_BUBBLE_FALLBACK,
+          Math.max(canonicalWidthRef.current || pillWidthRef.current, PILL_MIN_WIDTH),
+          PILL_HEIGHT,
         );
       }
-      setErrorMessage(message);
       errorTimerRef.current = setTimeout(() => {
-        setErrorMessage(null);
         errorTimerRef.current = null;
+        beginErrorExit();
       }, ERROR_DISMISS_MS);
     },
-    [clearErrorTimer, pillWidth],
+    [beginErrorExit, clearErrorTimer],
   );
 
+  const showApiErrorRef = useRef(showApiError);
+  const dismissErrorRef = useRef(dismissError);
+  showApiErrorRef.current = showApiError;
+  dismissErrorRef.current = dismissError;
+
   useLayoutEffect(() => {
-    const shell = shellRef.current;
     const probe = probeRef.current;
-    const errorStack = errorStackRef.current;
-    if (!shell || !probe) return;
+    if (!probe) return;
 
     syncOverlaySize();
+    let raf = 0;
     const observer = new ResizeObserver(() => {
-      syncOverlaySize();
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(syncOverlaySize);
     });
-    observer.observe(shell);
     observer.observe(probe);
-    if (errorStack) observer.observe(errorStack);
-    return () => observer.disconnect();
-  }, [errorMessage, syncOverlaySize]);
+    return () => {
+      cancelAnimationFrame(raf);
+      observer.disconnect();
+    };
+  }, [syncOverlaySize]);
 
   useLayoutEffect(() => {
-    if (!errorMessage) return;
-    const id = requestAnimationFrame(() => {
-      syncOverlaySize();
-      requestAnimationFrame(syncOverlaySize);
-    });
-    return () => cancelAnimationFrame(id);
-  }, [errorMessage, syncOverlaySize]);
+    syncOverlaySize();
+  }, [errorBubble, syncOverlaySize]);
 
   useEffect(() => {
     let frame = 0;
@@ -309,26 +397,83 @@ export function PillOverlay() {
   useEffect(() => {
     let ws: WebSocket | null = null;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-    let hasConnected = false;
+    let disconnectErrorTimer: ReturnType<typeof setTimeout> | null = null;
+    let healthPollTimer: ReturnType<typeof setInterval> | null = null;
+    let closed = false;
+
+    const ENGINE_DISCONNECT_ERROR = "Нет связи с движком Spotti Voice";
+
+    function clearDisconnectErrorTimer() {
+      if (disconnectErrorTimer) {
+        clearTimeout(disconnectErrorTimer);
+        disconnectErrorTimer = null;
+      }
+    }
+
+    function scheduleDisconnectError() {
+      clearDisconnectErrorTimer();
+      disconnectErrorTimer = setTimeout(() => {
+        disconnectErrorTimer = null;
+        if (closed || connectedRef.current) return;
+        setState("error");
+        showApiErrorRef.current(ENGINE_DISCONNECT_ERROR);
+      }, 1800);
+    }
+
+    async function waitForEngineHealth(base: string, attempts = 24): Promise<boolean> {
+      for (let i = 0; i < attempts && !closed; i += 1) {
+        try {
+          const res = await fetch(`${base}/api/health`, { cache: "no-store" });
+          if (res.ok) return true;
+        } catch {
+          // retry
+        }
+        await new Promise((r) => setTimeout(r, 250));
+      }
+      return false;
+    }
 
     function connect(base: string) {
+      if (closed) return;
+      if (ws) {
+        ws.onopen = null;
+        ws.onclose = null;
+        ws.onmessage = null;
+        ws.onerror = null;
+        ws.close();
+        ws = null;
+      }
+
       const wsUrl = base.replace(/^http/, "ws") + "/ws/events";
       ws = new WebSocket(wsUrl);
+
       ws.onopen = () => {
-        hasConnected = true;
+        clearDisconnectErrorTimer();
         setConnected(true);
-        dismissError();
+        connectedRef.current = true;
+        setState((prev) => (prev === "error" ? "idle" : prev));
+        dismissErrorRef.current();
       };
+
       ws.onclose = () => {
         setConnected(false);
-        if (hasConnected) {
-          setState("error");
-          showApiError("Нет связи с движком Spotti Voice");
-        }
+        connectedRef.current = false;
+        if (closed) return;
+        scheduleDisconnectError();
         reconnectTimer = setTimeout(() => {
-          void resolveEngineBase().then(connect);
+          reconnectTimer = null;
+          void resolveEngineBase().then(async (nextBase) => {
+            if (closed) return;
+            await waitForEngineHealth(nextBase, 8);
+            if (!closed) connect(nextBase);
+          });
         }, 2000);
       };
+
+      ws.onerror = () => {
+        ws?.close();
+      };
+
       ws.onmessage = (ev) => {
         try {
           const msg = JSON.parse(ev.data as string);
@@ -336,7 +481,7 @@ export function PillOverlay() {
             const next = msg.state as EngineState;
             setState(next);
             if (next === "listening") {
-              dismissError();
+              dismissErrorRef.current();
             }
           }
           if (msg.type === "level" && typeof msg.level === "number") {
@@ -345,7 +490,7 @@ export function PillOverlay() {
           }
           if (msg.type === "error" && typeof msg.message === "string") {
             setState("error");
-            showApiError(msg.message);
+            showApiErrorRef.current(msg.message);
           }
         } catch {
           // ignore malformed events
@@ -353,13 +498,42 @@ export function PillOverlay() {
       };
     }
 
-    void resolveEngineBase().then(connect);
+    void resolveEngineBase().then(async (base) => {
+      const ready = await waitForEngineHealth(base, 80);
+      if (closed) return;
+      if (ready) {
+        connect(base);
+        return;
+      }
+      scheduleDisconnectError();
+      healthPollTimer = setInterval(async () => {
+        if (closed || connectedRef.current) {
+          if (healthPollTimer) clearInterval(healthPollTimer);
+          healthPollTimer = null;
+          return;
+        }
+        if (await waitForEngineHealth(base, 4)) {
+          if (healthPollTimer) clearInterval(healthPollTimer);
+          healthPollTimer = null;
+          connect(base);
+        }
+      }, 2000);
+    });
 
     return () => {
+      closed = true;
+      if (healthPollTimer) clearInterval(healthPollTimer);
+      clearDisconnectErrorTimer();
       if (reconnectTimer) clearTimeout(reconnectTimer);
-      ws?.close();
+      if (ws) {
+        ws.onopen = null;
+        ws.onclose = null;
+        ws.onmessage = null;
+        ws.onerror = null;
+        ws.close();
+      }
     };
-  }, [dismissError, showApiError]);
+  }, []);
 
   const reduced =
     typeof window !== "undefined" &&
@@ -368,24 +542,27 @@ export function PillOverlay() {
   const label = connected ? STATE_LABEL[state] : "Нет связи";
 
   return (
-    <div className="overlay-shell" ref={shellRef}>
+    <div
+      className="overlay-shell"
+      ref={shellRef}
+      style={{ width: pillWidth }}
+    >
       <div className="pill-width-probe" ref={probeRef} aria-hidden>
         <div className="pill-inner pill-inner--probe">
           <PillContent state={state} level={displayLevel} reduced={reduced} />
         </div>
       </div>
-      {errorMessage ? (
-        <div className="pill-error-stack" ref={errorStackRef}>
-          <ErrorBubble message={errorMessage} onDismiss={dismissError} />
-        </div>
-      ) : null}
-      <div className="pill-slot">
+      <div className="pill-slot" style={{ height: PILL_HEIGHT, width: pillWidth }}>
         <PillFace
           state={state}
           level={displayLevel}
           reduced={reduced}
           label={label}
           width={pillWidth}
+          errorMessage={errorBubble?.message ?? null}
+          errorPhase={errorBubble?.phase}
+          onErrorDismiss={dismissError}
+          onErrorExitComplete={finalizeErrorExit}
         />
       </div>
     </div>

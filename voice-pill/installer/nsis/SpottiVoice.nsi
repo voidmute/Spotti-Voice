@@ -1,11 +1,16 @@
-; Spotti Voice — NSIS engine, silent install, custom Electron setup UI.
+; Spotti Voice — LEGACY NSIS engine (optional uninstall stub only).
+; Primary installer: voice-pill\build-setup.bat → x64 Electron portable (dist-setup\SpottiVoice-Setup.exe).
 ; Build: voice-pill\build-setup.bat (requires NSIS 3.x makensis on PATH)
 
 !include "LogicLib.nsh"
 
 !define APP_NAME "Spotti Voice"
 !define APP_PUBLISHER "Spotti"
-!define APP_EXE "Spotti Voice.exe"
+!define APP_EXE "electron\node_modules\electron\dist\Spotti Voice.exe"
+!define SETUP_EXE "Spotti Voice Setup.exe"
+!define ENGINE_EXE "Spotti Voice Engine.exe"
+!define LAUNCH_UI "launch-ui.cmd"
+!define ELECTRON_DIR_REL "electron"
 !define UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\SpottiVoice"
 !define PROTOCOL "spotti-voice"
 
@@ -17,6 +22,7 @@ InstallDir "$PROGRAMFILES64\Spotti Voice"
 RequestExecutionLevel admin
 ShowInstDetails hide
 SilentInstall silent
+Icon "..\..\assets\app-icon.ico"
 
 Var InstDirFromUi
 Var SetupLogPath
@@ -66,36 +72,40 @@ Section "Main"
   Push "PLUGINSDIR=$PLUGINSDIR"
   Call AppendSetupLog
 
+  ; Phase 1 — thin bootstrap: setup UI + compressed payload only (no full tree extract).
   SetOutPath "$PLUGINSDIR\setup-ui"
   File "..\staging\setup-ui\main.mjs"
   File "..\staging\setup-ui\preload.mjs"
   File "..\staging\setup-ui\package.json"
   File /nonfatal "..\staging\setup-ui\package-lock.json"
+  File "..\staging\setup-ui\payload-manifest.json"
   File /r "..\staging\setup-ui\web"
   File /r "..\staging\setup-ui\runtime"
 
   SetOutPath "$PLUGINSDIR"
-  File /r "..\staging\payload"
+  File "..\staging\payload.zip"
 
   StrCpy $InstDirFromUi ""
   StrCpy $BootstrapError ""
 
-  IfFileExists "$PLUGINSDIR\setup-ui\runtime\electron.exe" runtime_ok
+  IfFileExists "$PLUGINSDIR\setup-ui\runtime\${SETUP_EXE}" setup_runtime_ok
+  IfFileExists "$PLUGINSDIR\setup-ui\runtime\electron.exe" setup_runtime_ok
     StrCpy $BootstrapError "12"
-    Push "bootstrap error 12: missing runtime"
+    Push "bootstrap error 12: missing setup runtime"
     Call AppendSetupLog
     Goto write_config
-runtime_ok:
-  IfFileExists "$PLUGINSDIR\payload\${APP_EXE}" payload_ok
+setup_runtime_ok:
+  IfFileExists "$PLUGINSDIR\payload.zip" archive_ok
     StrCpy $BootstrapError "11"
-    Push "bootstrap error 11: missing payload exe"
+    Push "bootstrap error 11: missing payload archive"
     Call AppendSetupLog
     Goto write_config
-payload_ok:
+archive_ok:
   StrCpy $BootstrapError ""
 
 write_config:
   FileOpen $0 "$PLUGINSDIR\setup-ui\setup-config.ini" w
+  FileWrite $0 "payloadArchive=$PLUGINSDIR\payload.zip$\r$\n"
   FileWrite $0 "payloadDir=$PLUGINSDIR\payload$\r$\n"
   FileWrite $0 "stateFile=$PLUGINSDIR\install-state.json$\r$\n"
   FileWrite $0 "defaultDir=$INSTDIR$\r$\n"
@@ -109,13 +119,18 @@ write_config:
     Abort
   ${EndIf}
 
-  Push "launching $PLUGINSDIR\setup-ui\runtime\electron.exe"
+  Push "launching setup wizard"
   Call AppendSetupLog
 
-  DetailPrint "Launching custom Electron setup UI..."
-  ExecWait '"$PLUGINSDIR\setup-ui\runtime\electron.exe" "$PLUGINSDIR\setup-ui"' $0
+  DetailPrint "Launching Spotti Voice setup..."
+  IfFileExists "$PLUGINSDIR\setup-ui\runtime\${SETUP_EXE}" launch_branded
+    ExecWait '"$PLUGINSDIR\setup-ui\runtime\electron.exe" "$PLUGINSDIR\setup-ui"' $0
+    Goto launch_done
+launch_branded:
+  ExecWait '"$PLUGINSDIR\setup-ui\runtime\${SETUP_EXE}" "$PLUGINSDIR\setup-ui"' $0
+launch_done:
 
-  Push "electron exit code $0"
+  Push "setup exit code $0"
   Call AppendSetupLog
 
   ${If} $0 != 0
@@ -139,18 +154,17 @@ exe_ok:
   WriteUninstaller "$INSTDIR\Uninstall.exe"
 
   CreateDirectory "$SMPROGRAMS\Spotti Voice"
-  CreateShortcut "$SMPROGRAMS\Spotti Voice\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\${APP_EXE}" 0
+  CreateShortcut "$SMPROGRAMS\Spotti Voice\${APP_NAME}.lnk" "$INSTDIR\${LAUNCH_UI}" "" "$INSTDIR\${APP_EXE}" 0
   CreateShortcut "$SMPROGRAMS\Spotti Voice\Uninstall.lnk" "$INSTDIR\Uninstall.exe"
 
   IfFileExists "$PLUGINSDIR\desktop-shortcut.flag" 0 no_desktop
-    CreateShortcut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\${APP_EXE}" 0
+    CreateShortcut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\${LAUNCH_UI}" "" "$INSTDIR\${APP_EXE}" 0
 no_desktop:
 
-  ; OAuth callback protocol handler
   WriteRegStr HKCR "${PROTOCOL}" "" "URL:Spotti Voice OAuth"
   WriteRegStr HKCR "${PROTOCOL}" "URL Protocol" ""
   WriteRegStr HKCR "${PROTOCOL}\DefaultIcon" "" "$INSTDIR\${APP_EXE},0"
-  WriteRegStr HKCR "${PROTOCOL}\shell\open\command" "" '"$INSTDIR\${APP_EXE}" "%1"'
+  WriteRegStr HKCR "${PROTOCOL}\shell\open\command" "" '"$INSTDIR\${APP_EXE}" "$INSTDIR\${ELECTRON_DIR_REL}" "%1"'
 
   WriteRegStr HKLM "${UNINST_KEY}" "DisplayName" "${APP_NAME}"
   WriteRegStr HKLM "${UNINST_KEY}" "DisplayVersion" "${APP_VERSION}"

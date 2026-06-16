@@ -9,6 +9,7 @@ import {
   dialog,
   shell,
 } from "electron";
+import http from "node:http";
 import { spawn } from "node:child_process";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import path from "node:path";
@@ -18,9 +19,30 @@ import { startWinGlobalPttPoll } from "./winGlobalPtt.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, "..");
-const USER_DATA = path.join(__dirname, ".user-data");
+
+/** Dev: .user-data beside electron when writable. Installed Program Files: %APPDATA%\\SpottiVoice\\ui. */
+function resolveUserDataDir() {
+  const portable = path.join(__dirname, ".user-data");
+  try {
+    fs.mkdirSync(portable, { recursive: true });
+    const probe = path.join(portable, ".write-probe");
+    fs.writeFileSync(probe, "ok");
+    fs.unlinkSync(probe);
+    return portable;
+  } catch {
+    const appData =
+      process.env.APPDATA || path.join(os.homedir(), "AppData", "Roaming");
+    return path.join(appData, "SpottiVoice", "ui");
+  }
+}
+
+const USER_DATA = resolveUserDataDir();
+fs.mkdirSync(USER_DATA, { recursive: true });
 app.setPath("userData", USER_DATA);
 app.setPath("cache", path.join(USER_DATA, "cache"));
+if (typeof app.setName === "function") {
+  app.setName("Spotti Voice");
+}
 
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
@@ -47,6 +69,59 @@ function oauthCallbackFromArgv(argv) {
   );
 }
 
+const LOCAL_OAUTH_HOST = "127.0.0.1";
+const LOCAL_OAUTH_PORT = 9780;
+const LOCAL_OAUTH_PATH = "/auth/callback";
+/** @type {import("node:http").Server | null} */
+let activeOAuthServer = null;
+
+function stopOAuthCallbackServer() {
+  if (!activeOAuthServer) return;
+  try {
+    activeOAuthServer.close();
+  } catch {
+    /* ignore */
+  }
+  activeOAuthServer = null;
+}
+
+function startOAuthCallbackServer(timeoutMs = 300000) {
+  stopOAuthCallbackServer();
+  return new Promise((resolve, reject) => {
+    const server = http.createServer((req, res) => {
+      const pathOnly = (req.url ?? "").split("?")[0];
+      if (pathOnly !== LOCAL_OAUTH_PATH) {
+        res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+        res.end("Not found");
+        return;
+      }
+      const callbackUrl = `http://${LOCAL_OAUTH_HOST}:${LOCAL_OAUTH_PORT}${req.url}`;
+      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+      res.end(
+        '<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8"><title>Spotti Voice</title></head><body style="font-family:system-ui,sans-serif;padding:2rem;text-align:center"><p>Вход выполнен. Закройте вкладку и вернитесь в Spotti Voice.</p></body></html>',
+      );
+      clearTimeout(timer);
+      stopOAuthCallbackServer();
+      resolve(callbackUrl);
+    });
+
+    const timer = setTimeout(() => {
+      stopOAuthCallbackServer();
+      reject(new Error("oauth_timeout"));
+    }, timeoutMs);
+
+    server.on("error", (err) => {
+      clearTimeout(timer);
+      stopOAuthCallbackServer();
+      reject(err);
+    });
+
+    server.listen(LOCAL_OAUTH_PORT, LOCAL_OAUTH_HOST, () => {
+      activeOAuthServer = server;
+    });
+  });
+}
+
 async function finishOAuthCallback(url) {
   try {
     const res = await fetch(`${ENGINE_BASE}/api/cloud/auth/finish`, {
@@ -68,18 +143,73 @@ async function finishOAuthCallback(url) {
   }
 }
 
-async function startCloudSignIn() {
-  const res = await fetch(`${ENGINE_BASE}/api/cloud/auth/begin`, { method: "POST" });
-  if (!res.ok) throw new Error("cloud_auth_begin_failed");
-  const data = await res.json();
-  const url = data?.authorize_url;
-  if (!url || typeof url !== "string") throw new Error("cloud_auth_begin_failed");
-  await shell.openExternal(url);
+async function warmCloudSession() {
+  try {
+    await fetch(`${ENGINE_BASE}/api/cloud/auth/warm`, { method: "POST" });
+  } catch {
+    /* engine may still be starting */
+  }
 }
 
-if (process.platform === "win32") {
-  app.setAsDefaultProtocolClient("spotti-voice");
+async function startCloudSignIn() {
+  let callbackPromise;
+  try {
+    callbackPromise = startOAuthCallbackServer();
+  } catch (err) {
+    console.error("oauth listener failed", err);
+    return { ok: false, error: "oauth_listener_failed" };
+  }
+  try {
+    const res = await fetch(`${ENGINE_BASE}/api/cloud/auth/begin`, { method: "POST" });
+    if (!res.ok) {
+      stopOAuthCallbackServer();
+      let detail = "begin_failed";
+      try {
+        const body = await res.json();
+        if (body?.detail) {
+          detail = typeof body.detail === "string" ? body.detail : String(body.detail);
+        }
+      } catch {
+        /* ignore */
+      }
+      return { ok: false, error: detail };
+    }
+    const data = await res.json();
+    const url = data?.authorize_url;
+    if (!url || typeof url !== "string") {
+      stopOAuthCallbackServer();
+      return { ok: false, error: "oauth_start_failed" };
+    }
+    await shell.openExternal(url);
+    const callbackUrl = await callbackPromise;
+    const finished = await finishOAuthCallback(callbackUrl);
+    if (!finished) {
+      return { ok: false, error: "oauth_finish_failed" };
+    }
+    return { ok: true };
+  } catch (err) {
+    stopOAuthCallbackServer();
+    if (err instanceof Error && err.message === "oauth_timeout") {
+      return { ok: false, error: "oauth_timeout" };
+    }
+    console.error("cloud auth begin failed", err);
+    return { ok: false, error: "engine_offline" };
+  }
 }
+
+/** Windows needs execPath + electron app dir or URL becomes argv[1] app path. */
+function registerSpottiVoiceProtocol() {
+  if (process.platform !== "win32") {
+    app.setAsDefaultProtocolClient("spotti-voice");
+    return;
+  }
+  const electronAppDir = path.resolve(__dirname);
+  app.setAsDefaultProtocolClient("spotti-voice", process.execPath, [
+    electronAppDir,
+  ]);
+}
+
+registerSpottiVoiceProtocol();
 
 const ENGINE_PORT = 9777;
 const ENGINE_BASE = `http://127.0.0.1:${ENGINE_PORT}`;
@@ -112,6 +242,7 @@ let appIcons = null;
 const TRAY_MENU_WIDTH = 220;
 /** Fallback until renderer reports measured menu height. */
 const TRAY_MENU_HEIGHT = 232;
+const TRAY_MENU_CORNER_RADIUS = 12;
 const VK_RBUTTON = 0x02;
 /** @type {((vk: number) => number) | null} */
 let getAsyncKeyState = null;
@@ -119,6 +250,9 @@ let getAsyncKeyState = null;
 let trayMenuReleasePoll = null;
 /** @type {import("node:child_process").ChildProcess | null} */
 let engineProc = null;
+let engineShuttingDown = false;
+/** @type {ReturnType<typeof setInterval> | null} */
+let engineWatchdogTimer = null;
 /** @type {(() => number) | null} */
 let getForegroundWindow = null;
 /** @type {(() => number) | null} */
@@ -244,15 +378,24 @@ async function waitForEngineAudio(maxAttempts = 40) {
   return null;
 }
 
-const ENGINE_EXE_NAMES = ["Spotti Voice.exe", "SpottiVoice.exe"];
+const ENGINE_EXE_NAMES = ["Spotti Voice Engine.exe", "SpottiVoice.exe"];
 
 function engineExeSearchDirs() {
+  const execDir = path.dirname(process.execPath);
+  /** UI exe lives in electron/dist — walk up to app electron folder, then install/repo root. */
+  const uiExeAppRoot = path.normalize(
+    path.join(execDir, "..", "..", "..", ".."),
+  );
   /** @type {string[]} */
   const dirs = [
+    ROOT,
     path.join(ROOT, "dist"),
+    path.join(__dirname, ".."),
     path.join(__dirname, "..", "dist"),
-    path.join(path.dirname(process.execPath), "dist"),
-    path.join(path.dirname(process.execPath), "..", "dist"),
+    path.join(execDir, "dist"),
+    path.join(execDir, "..", "dist"),
+    uiExeAppRoot,
+    path.join(uiExeAppRoot, "dist"),
   ];
   if (process.resourcesPath) {
     dirs.push(
@@ -293,10 +436,10 @@ function notifyEngineMissing(searchedDirs) {
   const detail = searchedDirs.length
     ? `Searched:\n${searchedDirs.map((d) => `  ${d}`).join("\n")}`
     : hint;
-  console.error(`Spotti Voice.exe not found. ${hint}\n${detail}`);
+  console.error(`Spotti Voice Engine.exe not found. ${hint}\n${detail}`);
   dialog.showErrorBox(
     "Spotti Voice — engine missing",
-    `Spotti Voice.exe was not found.\n\n${hint}\n\n${detail}`,
+    `Spotti Voice Engine.exe was not found.\n\n${hint}\n\n${detail}`,
   );
   if (tray && typeof tray.displayBalloon === "function") {
     tray.displayBalloon({
@@ -336,13 +479,49 @@ function spawnEngineProcess(command, args, options) {
       // already closed
     }
     engineProc = null;
+    if (!engineShuttingDown) {
+      setTimeout(() => spawnEngine(), 1500);
+    }
   });
   engineProc.on("error", (err) => {
     fs.appendFileSync(logPath, `--- spawn error: ${err.message} ---\n`);
   });
 }
 
+async function isEngineReachable() {
+  try {
+    const res = await fetch(`${ENGINE_BASE}/api/health`, {
+      signal: AbortSignal.timeout(2500),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+function startEngineWatchdog() {
+  if (engineWatchdogTimer) return;
+  engineWatchdogTimer = setInterval(async () => {
+    if (engineShuttingDown) return;
+    const health = await waitForEngine(1);
+    if (!health && !engineProc) {
+      spawnEngine();
+    }
+  }, 8000);
+}
+
 function spawnEngine() {
+  if (engineProc) return;
+  void isEngineReachable().then((alreadyUp) => {
+    if (alreadyUp) {
+      console.info("Engine already listening on", ENGINE_BASE);
+      return;
+    }
+    spawnEngineNow();
+  });
+}
+
+function spawnEngineNow() {
   if (engineProc) return;
   const bundled = resolveEngineExePath();
   if (bundled) {
@@ -362,7 +541,7 @@ function spawnEngine() {
   }
 
   console.warn(
-    "Spotti Voice.exe not found — SPOTTI_VOICE_DEV=1 python fallback.",
+    "Spotti Voice Engine.exe not found — SPOTTI_VOICE_DEV=1 python fallback.",
   );
   const repoRoot = path.join(ROOT, "..");
   const py = process.platform === "win32" ? "python" : "python3";
@@ -375,8 +554,8 @@ function spawnEngine() {
 function resolveAppIconPath() {
   const candidates = [
     path.join(ROOT, "assets", "app-icon.png"),
-    path.join(ROOT, "web", "public", "white-only.png"),
     path.join(ROOT, "web", "dist", "white-only.png"),
+    path.join(ROOT, "web", "public", "white-only.png"),
   ];
   return candidates.find((candidate) => fs.existsSync(candidate)) ?? null;
 }
@@ -598,33 +777,12 @@ function overlayWindowShape(width, height) {
 }
 
 const OVERLAY_PILL_HEIGHT = 48;
+/** Pill content width from first layout — error state must not widen the HWND. */
+let overlayPillWidth = 0;
+const OVERLAY_PILL_MIN_WIDTH = 143;
+const OVERLAY_PILL_MAX_WIDTH = 168;
 
-/**
- * Bubble + pill stacked HRGN — clips square HWND corners (no rectangular DWM haze).
- * @param {number} width
- * @param {number} height
- * @param {number} [pillHeight]
- */
-function overlayStackedShape(width, height, pillHeight = OVERLAY_PILL_HEIGHT) {
-  const w = Math.max(1, Math.round(width));
-  const h = Math.max(1, Math.round(height));
-  const pillH = Math.min(Math.max(1, Math.round(pillHeight)), h);
-  const bubbleH = h - pillH;
-  if (bubbleH <= 0) {
-    return overlayWindowShape(w, h);
-  }
-  const bubbleR = Math.min(12, Math.floor(bubbleH / 2), Math.floor(w / 2));
-  const top = roundedRectShape(w, bubbleH, bubbleR);
-  const bottom = roundedRectShape(w, pillH, pillH / 2).map((rect) => ({
-    x: rect.x,
-    y: rect.y + bubbleH,
-    width: rect.width,
-    height: rect.height,
-  }));
-  return [...top, ...bottom];
-}
-
-function applyOverlayWindowShape(win, width, height, options = {}) {
+function applyOverlayWindowShape(win, width, height, _options = {}) {
   if (!win || win.isDestroyed()) return;
   const scale = overlayDisplayScale(win);
   const w = snapOverlayDimension(width, scale);
@@ -632,11 +790,8 @@ function applyOverlayWindowShape(win, width, height, options = {}) {
   applyOverlayWindowChrome(win);
   if (!USE_OVERLAY_SET_SHAPE || typeof win.setShape !== "function") return;
   try {
-    if (h > OVERLAY_PILL_HEIGHT) {
-      win.setShape(overlayStackedShape(w, h, options.pillHeight ?? OVERLAY_PILL_HEIGHT));
-    } else {
-      win.setShape(overlayWindowShape(w, h));
-    }
+    // One stadium for full HWND — error strip lives inside the expanded pill, not a separate bubble.
+    win.setShape(overlayWindowShape(w, h));
   } catch (err) {
     console.warn("[overlay] setShape failed", err);
   }
@@ -656,9 +811,28 @@ function scheduleOverlayWindowShape(win, width, height, options = {}) {
 function resizeOverlayToContent(width, height) {
   if (!overlayWindow || overlayWindow.isDestroyed()) return false;
   const scale = overlayDisplayScale(overlayWindow);
+  const rawW = Math.max(1, Math.ceil(width));
+  const rawH = Math.max(1, Math.ceil(height));
+  if (
+    rawH <= OVERLAY_PILL_HEIGHT + 1 &&
+    rawW >= OVERLAY_PILL_MIN_WIDTH &&
+    rawW <= OVERLAY_PILL_MAX_WIDTH
+  ) {
+    overlayPillWidth = rawW;
+  }
+  const w = snapOverlayDimension(
+    overlayPillWidth > 0
+      ? overlayPillWidth
+      : Math.max(OVERLAY_PILL_MIN_WIDTH, Math.min(rawW, OVERLAY_PILL_MAX_WIDTH)),
+    scale,
+  );
   // Ceil so HWND is never smaller than painted pill — avoids 0-alpha fringe at corners.
-  const w = snapOverlayDimension(Math.ceil(width), scale);
-  const h = snapOverlayDimension(Math.ceil(height), scale);
+  const h = snapOverlayDimension(rawH, scale);
+  const [contentW, contentH] = overlayWindow.getContentSize();
+  if (Math.abs(contentW - w) <= 1 && Math.abs(contentH - h) <= 1) {
+    applyOverlayWindowShape(overlayWindow, w, h);
+    return true;
+  }
   const bounds = overlayWindow.getBounds();
   const centerX = bounds.x + bounds.width / 2;
   const newX = snapOverlayDimension(centerX - w / 2, scale);
@@ -767,6 +941,36 @@ function showTrayMenuOnRightClickRelease() {
   }, 16);
 }
 
+function applyTrayMenuWindowShape(win, width, height) {
+  if (!win || win.isDestroyed()) return;
+  const w = Math.max(1, Math.round(width));
+  const h = Math.max(1, Math.round(height));
+  applyOverlayWindowChrome(win);
+  if (typeof win.setShape !== "function") return;
+  try {
+    const r = Math.min(TRAY_MENU_CORNER_RADIUS, Math.floor(w / 2), Math.floor(h / 2));
+    win.setShape(roundedRectShape(w, h, r));
+  } catch (err) {
+    console.warn("[tray-menu] setShape failed", err);
+  }
+}
+
+function playTrayMenuEntrance(win) {
+  if (!win || win.isDestroyed()) return;
+  void win.webContents
+    .executeJavaScript(
+      `(() => {
+        const menu = document.querySelector(".menu");
+        if (!menu) return;
+        menu.classList.remove("is-shown");
+        void menu.offsetWidth;
+        menu.classList.add("is-shown");
+      })();`,
+      true,
+    )
+    .catch(() => {});
+}
+
 function positionTrayMenuWindow() {
   if (!trayMenuWindow || trayMenuWindow.isDestroyed() || !tray) return;
 
@@ -776,12 +980,15 @@ function positionTrayMenuWindow() {
     y: trayBounds.y + Math.floor(trayBounds.height / 2),
   });
   const { workArea } = display;
+  const bounds = trayMenuWindow.getBounds();
+  const menuW = bounds.width || TRAY_MENU_WIDTH;
+  const menuH = bounds.height || TRAY_MENU_HEIGHT;
 
   let x =
     trayBounds.x +
     Math.floor(trayBounds.width / 2) -
-    Math.floor(TRAY_MENU_WIDTH / 2);
-  let y = trayBounds.y - TRAY_MENU_HEIGHT - 8;
+    Math.floor(menuW / 2);
+  let y = trayBounds.y - menuH - 8;
 
   if (y < workArea.y) {
     y = trayBounds.y + trayBounds.height + 8;
@@ -789,44 +996,58 @@ function positionTrayMenuWindow() {
 
   x = Math.max(
     workArea.x + 8,
-    Math.min(x, workArea.x + workArea.width - TRAY_MENU_WIDTH - 8),
+    Math.min(x, workArea.x + workArea.width - menuW - 8),
   );
   y = Math.max(
     workArea.y + 8,
-    Math.min(y, workArea.y + workArea.height - TRAY_MENU_HEIGHT - 8),
+    Math.min(y, workArea.y + workArea.height - menuH - 8),
   );
 
   trayMenuWindow.setBounds({
     x: Math.round(x),
     y: Math.round(y),
-    width: TRAY_MENU_WIDTH,
-    height: TRAY_MENU_HEIGHT,
+    width: menuW,
+    height: menuH,
   });
 }
 
 function resizeTrayMenuToContent(width, height) {
   if (!trayMenuWindow || trayMenuWindow.isDestroyed()) return;
   const w = Math.min(320, Math.max(180, Math.round(width)));
-  const h = Math.min(420, Math.max(180, Math.round(height)));
+  const h = Math.min(420, Math.max(160, Math.round(height)));
   trayMenuWindow.setBounds({
     ...trayMenuWindow.getBounds(),
     width: w,
     height: h,
   });
+  applyTrayMenuWindowShape(trayMenuWindow, w, h);
   positionTrayMenuWindow();
+  pinOverlayOnTop(trayMenuWindow);
+  if (!trayMenuWindow.isVisible()) {
+    playTrayMenuEntrance(trayMenuWindow);
+    trayMenuWindow.show();
+    trayMenuWindow.focus();
+    pinOverlayOnTop(trayMenuWindow);
+  }
+}
+
+function revealTrayMenu() {
+  if (!trayMenuWindow || trayMenuWindow.isDestroyed()) return;
+  positionTrayMenuWindow();
+  const [w, h] = trayMenuWindow.getContentSize();
+  applyTrayMenuWindowShape(trayMenuWindow, w, h);
+  pinOverlayOnTop(trayMenuWindow);
+  playTrayMenuEntrance(trayMenuWindow);
+  trayMenuWindow.show();
+  trayMenuWindow.focus();
   pinOverlayOnTop(trayMenuWindow);
 }
 
 function showTrayMenu() {
   if (trayMenuWindow && !trayMenuWindow.isDestroyed()) {
-    positionTrayMenuWindow();
-    pinOverlayOnTop(trayMenuWindow);
-    trayMenuWindow.show();
-    trayMenuWindow.focus();
-    pinOverlayOnTop(trayMenuWindow);
+    revealTrayMenu();
     return;
   }
-
   trayMenuWindow = new BrowserWindow({
     width: TRAY_MENU_WIDTH,
     height: TRAY_MENU_HEIGHT,
@@ -843,6 +1064,8 @@ function showTrayMenu() {
     alwaysOnTop: true,
     focusable: true,
     hasShadow: false,
+    paintWhenInitiallyHidden: true,
+    ...(process.platform === "win32" ? { thickFrame: false, roundedCorners: false } : {}),
     type: process.platform === "win32" ? "toolbar" : "popup",
     webPreferences: {
       preload: path.join(__dirname, "tray-menu-preload.cjs"),
@@ -852,14 +1075,14 @@ function showTrayMenu() {
     },
   });
 
+  applyOverlayWindowChrome(trayMenuWindow);
+
   attachLoadDiagnostics(trayMenuWindow, "tray-menu");
   trayMenuWindow.loadFile(path.join(__dirname, "tray-menu.html"));
   trayMenuWindow.once("ready-to-show", () => {
     positionTrayMenuWindow();
-    pinOverlayOnTop(trayMenuWindow);
-    trayMenuWindow?.show();
-    trayMenuWindow?.focus();
-    pinOverlayOnTop(trayMenuWindow);
+    const [w, h] = trayMenuWindow?.getContentSize() ?? [TRAY_MENU_WIDTH, TRAY_MENU_HEIGHT];
+    applyTrayMenuWindowShape(trayMenuWindow, w, h);
   });
   trayMenuWindow.on("show", () => pinOverlayOnTop(trayMenuWindow));
   trayMenuWindow.on("focus", () => pinOverlayOnTop(trayMenuWindow));
@@ -875,6 +1098,7 @@ async function createOverlay(engineSettings = null) {
   const { width: workW } = screen.getPrimaryDisplay().workAreaSize;
   const pillWidth = 143;
   const pillHeight = 48;
+  overlayPillWidth = pillWidth;
   let x =
     typeof pill.x === "number"
       ? Math.round(pill.x)
@@ -1404,8 +1628,7 @@ ipcMain.handle("voice:ptt", async (event, pressed) => {
 
 ipcMain.handle("voice:cloud-sign-in", async (event) => {
   if (!isTrustedSender(event)) throw new Error("Untrusted IPC sender");
-  await startCloudSignIn();
-  return true;
+  return startCloudSignIn();
 });
 
 ipcMain.handle("voice:cloud-sign-out", async (event) => {
@@ -1456,6 +1679,7 @@ app.on("second-instance", (_event, argv) => {
 });
 
 app.whenReady().then(async () => {
+  registerSpottiVoiceProtocol();
   const bootCallback = oauthCallbackFromArgv(process.argv);
   if (bootCallback) void finishOAuthCallback(bootCallback);
   getAppIcons();
@@ -1463,11 +1687,13 @@ app.whenReady().then(async () => {
   const existing = await waitForEngine(8);
   if (!existing) {
     spawnEngine();
-    const health = await waitForEngine();
+    const health = await waitForEngine(80);
     if (!health) {
       console.error("Spotti Voice engine did not start");
     }
   }
+  void warmCloudSession();
+  startEngineWatchdog();
   const engineSettings = await fetchEngineSettings();
   await createOverlay(engineSettings);
   buildTray();
@@ -1485,6 +1711,11 @@ app.whenReady().then(async () => {
 });
 
 app.on("will-quit", () => {
+  engineShuttingDown = true;
+  if (engineWatchdogTimer) {
+    clearInterval(engineWatchdogTimer);
+    engineWatchdogTimer = null;
+  }
   clearTrayMenuReleaseWait();
   unregisterPttShortcut();
   if (overlayWindow && !overlayWindow.isDestroyed()) {

@@ -34,7 +34,9 @@
       }
 
       .menu {
-        margin: 8px;
+        box-sizing: border-box;
+        width: 100%;
+        min-height: 100%;
         padding: 6px 6px 10px;
         border-radius: 12px;
         background: var(--bg);
@@ -42,6 +44,32 @@
         box-shadow:
           0 12px 40px oklch(0 0 0 / 0.45),
           0 0 0 1px oklch(1 0 0 / 0.04) inset;
+        opacity: 0;
+        transform: translateY(6px) scale(0.98);
+      }
+
+      .menu.is-shown {
+        animation: tray-menu-in 0.26s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+      }
+
+      @keyframes tray-menu-in {
+        from {
+          opacity: 0;
+          transform: translateY(6px) scale(0.98);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .menu,
+        .menu.is-shown {
+          animation: none !important;
+          opacity: 1;
+          transform: none;
+        }
       }
 
       .menu-header {
@@ -107,9 +135,9 @@
     </style>
   </head>
   <body>
-    <nav class="menu" role="menu" aria-label="Меню Spotti Voice">
+    <nav class="menu is-shown" role="menu" aria-label="Меню Spotti Voice">
       <div class="menu-header">
-        <img src="../assets/app-icon.png" alt="" aria-hidden="true" />
+        <img src="../web/dist/white-only.png" alt="" aria-hidden="true" />
         <span>Spotti Voice</span>
       </div>
       <button type="button" data-action="show-pill">Показать виджет</button>
@@ -140,7 +168,7 @@
       function reportMenuSize() {
         if (!menu) return;
         const rect = menu.getBoundingClientRect();
-        void api.reportSize(Math.ceil(rect.width + 16), Math.ceil(rect.height + 16));
+        void api.reportSize(Math.ceil(rect.width), Math.ceil(rect.height));
       }
 
       requestAnimationFrame(reportMenuSize);

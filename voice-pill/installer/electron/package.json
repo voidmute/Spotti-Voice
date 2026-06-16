@@ -10,5 +10,8 @@
   },
   "dependencies": {
     "electron": "^35.1.5"
+  },
+  "devDependencies": {
+    "@electron/asar": "^4.2.0"
   }
 }

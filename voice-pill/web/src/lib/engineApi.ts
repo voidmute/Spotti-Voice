@@ -160,7 +160,7 @@ declare global {
       closeWindow?: () => Promise<boolean>;
       reloadHotkey?: () => Promise<boolean>;
       setHotkeyCapture?: (enabled: boolean) => Promise<boolean>;
-      cloudSignIn?: () => Promise<boolean>;
+      cloudSignIn?: () => Promise<{ ok: boolean; error?: string }>;
       cloudSignOut?: () => Promise<boolean>;
       cloudStatus?: () => Promise<{ ready: boolean; signedIn: boolean; userLabel: string | null }>;
       onCloudAuthChanged?: (handler: () => void) => () => void;

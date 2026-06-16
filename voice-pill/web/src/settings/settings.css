@@ -21,6 +21,13 @@
   --setup-radius-xs: 10px;
   --setup-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 
+  /* Aliases used by cloud-auth panel (setup tokens). */
+  --settings-border: var(--setup-border);
+  --settings-surface: var(--setup-surface);
+  --settings-muted: var(--setup-muted);
+  --settings-accent: var(--setup-accent);
+  --settings-text: var(--setup-text);
+
   position: relative;
   display: flex;
   flex-direction: column;
@@ -515,9 +522,8 @@
 .settings-lang {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  flex: 1;
-  min-height: 0;
+  gap: 14px;
+  flex-shrink: 0;
   overflow: visible;
   padding-top: 2px;
 }
@@ -638,12 +644,10 @@
 
 .settings-lang-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  grid-template-rows: repeat(4, minmax(0, 1fr));
-  gap: 8px;
-  flex: 1;
-  min-height: 0;
-  padding: 4px 2px 2px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px 12px;
+  align-content: start;
+  padding: 2px 0 4px;
   overflow: visible;
 }
 
@@ -652,17 +656,16 @@
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
   min-width: 0;
-  height: 100%;
-  min-height: 0;
-  padding: 8px 10px 8px 9px;
-  border-radius: var(--setup-radius-xs);
+  min-height: 46px;
+  padding: 10px 12px 10px 11px;
+  border-radius: var(--setup-radius-sm);
   border: 1px solid var(--setup-border);
   background: oklch(0.17 0.017 278 / 0.85);
   color: var(--setup-text);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 650;
   cursor: pointer;
   text-align: left;
@@ -702,8 +705,8 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 24px;
-  height: 17px;
+  width: 28px;
+  height: 20px;
 }
 
 .settings-lang-chip__auto-icon {
@@ -716,9 +719,9 @@
 }
 
 .settings-lang-chip__flag {
-  width: 24px;
-  height: 17px;
-  border-radius: 3px;
+  width: 28px;
+  height: 20px;
+  border-radius: 4px;
   box-shadow:
     0 0 0 1px oklch(1 0 0 / 0.1),
     0 2px 6px oklch(0.08 0.02 278 / 0.45);
@@ -728,7 +731,8 @@
 .settings-lang-chip__label {
   flex: 1 1 auto;
   min-width: 0;
-  line-height: 1.2;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1162,41 +1166,54 @@ html:has(.settings-app) body::-webkit-scrollbar {
 }
 
 .settings-cloud-auth {
-  margin-bottom: 1.25rem;
-  padding: 1rem 1.1rem;
-  border-radius: 14px;
-  border: 1px solid color-mix(in oklch, var(--settings-border) 80%, transparent);
-  background: color-mix(in oklch, var(--settings-surface) 92%, var(--settings-accent) 8%);
+  margin-bottom: 1.35rem;
+  padding: 1.15rem 1.2rem 1.2rem;
+  border-radius: 16px;
+  border: 1px solid color-mix(in oklch, var(--settings-border) 72%, transparent);
+  background: linear-gradient(
+    155deg,
+    color-mix(in oklch, var(--settings-surface) 94%, var(--settings-accent) 6%) 0%,
+    color-mix(in oklch, var(--settings-surface) 88%, #5865f2 12%) 100%
+  );
+  box-shadow: 0 10px 28px color-mix(in oklch, #000 22%, transparent);
 }
 
-.settings-cloud-auth__row {
-  display: flex;
-  gap: 0.75rem;
-  align-items: flex-start;
+.settings-cloud-auth__head {
+  margin-bottom: 0.95rem;
 }
 
-.settings-cloud-auth__icon {
-  display: inline-flex;
-  padding: 0.45rem;
-  border-radius: 10px;
-  background: color-mix(in oklch, var(--settings-accent) 14%, transparent);
-  color: var(--settings-accent);
+.settings-cloud-auth__eyebrow {
+  margin: 0 0 0.25rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: color-mix(in oklch, var(--settings-muted) 88%, var(--settings-accent) 12%);
 }
 
 .settings-cloud-auth__title {
-  margin: 0 0 0.2rem;
-  font-weight: 600;
+  margin: 0 0 0.35rem;
+  font-size: 1.05rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
 }
 
 .settings-cloud-auth__meta {
   margin: 0;
   font-size: 0.88rem;
   color: var(--settings-muted);
-  line-height: 1.45;
+  line-height: 1.5;
+  max-width: 42ch;
+}
+
+.settings-cloud-auth__meta--ok {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: color-mix(in oklch, #3d9a6a 75%, var(--settings-text) 25%);
 }
 
 .settings-cloud-auth__actions {
-  margin-top: 0.85rem;
   display: flex;
   gap: 0.5rem;
 }
@@ -1204,29 +1221,83 @@ html:has(.settings-app) body::-webkit-scrollbar {
 .settings-cloud-auth__btn {
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
-  padding: 0.55rem 0.9rem;
-  border-radius: 10px;
-  border: 1px solid color-mix(in oklch, var(--settings-accent) 35%, transparent);
-  background: var(--settings-accent);
-  color: var(--settings-on-accent, #fff);
+  justify-content: center;
+  gap: 0.55rem;
+  min-height: 2.65rem;
+  padding: 0.6rem 1rem;
+  border-radius: 12px;
+  border: 1px solid transparent;
   font: inherit;
+  font-weight: 600;
   cursor: pointer;
+  transition:
+    transform 0.15s ease-out,
+    background 0.15s ease-out,
+    border-color 0.15s ease-out,
+    opacity 0.15s ease-out;
+}
+
+.settings-cloud-auth__btn--discord {
+  width: 100%;
+  background: #5865f2;
+  border-color: color-mix(in oklch, #5865f2 70%, #000 30%);
+  color: #fff;
+  box-shadow: 0 6px 18px color-mix(in oklch, #5865f2 35%, transparent);
+}
+
+.settings-cloud-auth__btn--discord:hover:not(:disabled) {
+  background: #4752c4;
+  transform: translateY(-1px);
 }
 
 .settings-cloud-auth__btn--ghost {
-  background: transparent;
+  background: color-mix(in oklch, var(--settings-surface) 80%, transparent);
   color: var(--settings-text);
   border-color: var(--settings-border);
 }
 
-.settings-cloud-auth__btn:disabled {
-  opacity: 0.6;
-  cursor: wait;
+.settings-cloud-auth__btn--ghost:hover:not(:disabled) {
+  background: color-mix(in oklch, var(--settings-surface-raised, var(--settings-surface)) 90%, transparent);
 }
 
-.settings-cloud-auth__error {
-  margin: 0.65rem 0 0;
-  font-size: 0.85rem;
-  color: #c44;
+.settings-cloud-auth__discord-mark {
+  width: 1.15rem;
+  height: 1.15rem;
+  flex-shrink: 0;
+}
+
+.settings-cloud-auth__btn:disabled {
+  opacity: 0.65;
+  cursor: wait;
+  transform: none;
+}
+
+.settings-cloud-auth__hint {
+  margin: 0.75rem 0 0;
+  padding: 0.55rem 0.75rem;
+  border-radius: 10px;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  color: var(--settings-muted);
+  background: color-mix(in oklch, var(--settings-accent) 8%, transparent);
+  border: 1px solid color-mix(in oklch, var(--settings-accent) 18%, transparent);
+}
+
+.settings-cloud-auth__alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  margin: 0.75rem 0 0;
+  padding: 0.6rem 0.75rem;
+  border-radius: 10px;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  color: #ffb4b4;
+  background: color-mix(in oklch, #c44 14%, transparent);
+  border: 1px solid color-mix(in oklch, #c44 35%, transparent);
+}
+
+.settings-cloud-auth__alert svg {
+  flex-shrink: 0;
+  margin-top: 0.1rem;
 }

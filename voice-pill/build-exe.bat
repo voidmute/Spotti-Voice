@@ -10,6 +10,13 @@ if errorlevel 1 (
   exit /b 1
 )
 
+echo [SPOTTI] Generating app icon...
+python scripts\make-icon.py
+if errorlevel 1 (
+  echo [SPOTTI] Icon generation failed.
+  exit /b 1
+)
+
 echo [SPOTTI] Building React UI...
 where npm >nul 2>&1
 if errorlevel 1 (
@@ -28,21 +35,13 @@ if not exist "web\dist\index.html" (
   exit /b 1
 )
 
-echo [SPOTTI] Stopping running Spotti Voice / Electron...
+echo [SPOTTI] Stopping running Spotti Voice...
 taskkill /F /IM "Spotti Voice.exe" >nul 2>&1
+taskkill /F /IM "Spotti Voice Engine.exe" >nul 2>&1
 taskkill /F /IM electron.exe >nul 2>&1
 ping -n 3 127.0.0.1 >nul
-if exist "dist\Spotti Voice.exe" (
-  del /F /Q "dist\Spotti Voice.exe" 2>nul
-)
-if exist "dist\Spotti Voice.exe" (
-  if exist "dist\Spotti Voice.exe.old" del /F /Q "dist\Spotti Voice.exe.old" 2>nul
-  move /Y "dist\Spotti Voice.exe" "dist\Spotti Voice.exe.old" >nul
-)
-if exist "dist\Spotti Voice.exe" (
-  echo [SPOTTI] Cannot overwrite dist\Spotti Voice.exe - close it and retry.
-  exit /b 1
-)
+if exist "dist\Spotti Voice.exe" del /F /Q "dist\Spotti Voice.exe" 2>nul
+if exist "dist\Spotti Voice Engine.exe" del /F /Q "dist\Spotti Voice Engine.exe" 2>nul
 
 if not exist "electron\node_modules\electron" (
   echo [SPOTTI] Installing Electron shell...
@@ -52,14 +51,18 @@ if not exist "electron\node_modules\electron" (
   popd
 )
 
-echo [SPOTTI] Building Spotti Voice.exe (PyInstaller)...
+echo [SPOTTI] Building Spotti Voice Engine.exe (PyInstaller)...
 python -m PyInstaller spotti_voice_engine.spec --noconfirm --clean
 if errorlevel 1 (
   echo [SPOTTI] PyInstaller failed.
   exit /b 1
 )
+if not exist "dist\Spotti Voice Engine.exe" (
+  echo [SPOTTI] dist\Spotti Voice Engine.exe missing after build.
+  exit /b 1
+)
 
-echo [SPOTTI] Copying Electron shell beside exe...
+echo [SPOTTI] Copying Electron shell beside engine...
 if not exist "electron\node_modules\electron\dist\resources.pak" (
   pushd electron
   call npm ci
@@ -76,6 +79,9 @@ copy /Y "electron\preload.cjs" "dist\electron\" >nul
 copy /Y "electron\tray-menu.html" "dist\electron\" >nul
 copy /Y "electron\tray-menu-preload.cjs" "dist\electron\" >nul
 copy /Y "electron\winGlobalPtt.mjs" "dist\electron\" >nul
+if not exist "dist\assets" mkdir "dist\assets"
+copy /Y "assets\app-icon.png" "dist\assets\" >nul
+copy /Y "assets\app-icon.ico" "dist\assets\" >nul
 if not exist "dist\electron\node_modules\electron\dist\resources.pak" (
   if exist "dist\electron\node_modules" rmdir /S /Q "dist\electron\node_modules" 2>nul
   ping -n 2 127.0.0.1 >nul
@@ -83,6 +89,21 @@ if not exist "dist\electron\node_modules\electron\dist\resources.pak" (
 robocopy "electron\node_modules" "dist\electron\node_modules" /E /COPY:DAT /R:2 /W:1 /NFL /NDL /NJH /NJS >nul
 if not exist "dist\electron\node_modules\electron\dist\resources.pak" (
   echo [SPOTTI] Electron runtime incomplete - resources.pak missing.
+  exit /b 1
+)
+
+echo [SPOTTI] Branding UI as Spotti Voice.exe (beside icudtl.dat)...
+node scripts\brand-electron-shell.mjs "dist\electron\node_modules\electron\dist\electron.exe" "dist\electron\node_modules\electron\dist\Spotti Voice.exe"
+if errorlevel 1 (
+  echo [SPOTTI] UI branding failed.
+  exit /b 1
+)
+if exist "dist\Spotti Voice.exe" del /F /Q "dist\Spotti Voice.exe" 2>nul
+
+echo [SPOTTI] Copying UI launcher script...
+copy /Y "launch-ui.cmd" "dist\launch-ui.cmd" >nul
+if not exist "dist\launch-ui.cmd" (
+  echo [SPOTTI] dist\launch-ui.cmd missing after copy.
   exit /b 1
 )
 
@@ -102,8 +123,9 @@ if errorlevel 1 (
 )
 
 echo.
-echo [OK] dist\Spotti Voice.exe
-echo     UI: dist\web\dist\
+echo [OK] dist\electron\node_modules\electron\dist\Spotti Voice.exe  ^(UI^)
+echo     dist\Spotti Voice Engine.exe  ^(background^)
+echo     UI assets: dist\web\dist\
 echo     Electron: dist\electron\
 exit /b 0
 

@@ -1,5 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
-# Build: build-engine.bat  ->  dist/Spotti Voice.exe
+# Build: build-engine.bat  ->  dist/Spotti Voice Engine.exe
 
 from pathlib import Path
 
@@ -142,7 +142,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name="Spotti Voice",
+    name="Spotti Voice Engine",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
