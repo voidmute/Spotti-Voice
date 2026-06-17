@@ -46,14 +46,8 @@ if (-not (Test-Path -LiteralPath $OutFile)) {
     throw "NSIS did not produce $OutFile"
 }
 
-$brandScript = Join-Path $VoicePillRoot "scripts\brand-electron-shell.mjs"
-if (Test-Path -LiteralPath $brandScript) {
-    Write-Host "[SPOTTI] Applying UAC admin manifest + icon to thin installer..."
-    & node $brandScript $OutFile $OutFile "Spotti Voice Setup" "SpottiVoice-Setup.exe" admin
-    if ($LASTEXITCODE -ne 0) {
-        throw "Failed to brand thin installer with admin manifest"
-    }
-}
+# Do NOT rcedit the NSIS output — it breaks NSIS embedded integrity CRC.
+# UAC + icon come from SpottiVoiceThin.nsi (RequestExecutionLevel admin, Icon).
 
 $sizeMb = (Get-Item -LiteralPath $OutFile).Length / 1MB
 if ($sizeMb -gt $MaxSizeMb) {
