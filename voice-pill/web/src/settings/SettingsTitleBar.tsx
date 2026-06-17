@@ -1,15 +1,21 @@
+import { type ReactNode } from "react";
 import { Minus, X } from "lucide-react";
 
-export function SettingsTitleBar() {
+type SettingsTitleBarProps = {
+  modeSwitch?: ReactNode;
+};
+
+export function SettingsTitleBar({ modeSwitch }: SettingsTitleBarProps) {
   return (
     <header className="settings-titlebar" data-tauri-drag-region>
       <div className="settings-titlebar__brand">
         <img className="settings-titlebar__logo" src="./white-only.png" alt="" />
         <div className="settings-titlebar__titles">
           <span className="settings-titlebar__name">Spotti Voice</span>
-          <span className="settings-titlebar__subtitle">Настройки</span>
         </div>
       </div>
+
+      <div className="settings-titlebar__center">{modeSwitch}</div>
 
       <div className="settings-titlebar__controls">
         <button

@@ -205,12 +205,8 @@ class AudioSession:
                 if self._monitor_active:
                     self._emit_level(pcm_chunk_level(pcm))
                 continue
-            utterance = self._buffer.feed(pcm)
+            self._buffer.feed(pcm, hold=True)
             self._emit_level(pcm_chunk_level(pcm))
-            if utterance and self._loop:
-                asyncio.run_coroutine_threadsafe(
-                    self._handle_utterance(utterance), self._loop
-                )
 
     async def _handle_utterance(self, pcm: bytes) -> None:
         await self._on_state("processing")

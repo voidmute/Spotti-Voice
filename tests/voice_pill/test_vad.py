@@ -59,3 +59,18 @@ def test_flush_ptt_empty_buffer():
     pcm, reason = buf.flush_ptt()
     assert pcm is None
     assert reason == "ptt_flush_empty"
+
+
+def test_feed_hold_accumulates_through_silence_no_early_flush():
+    from voice_pill.engine.vad import MIN_PCM_BYTES, UtteranceBuffer
+
+    buf = UtteranceBuffer()
+    loud = _mono_pcm(2000, samples=1600)
+    silent = b"\x00\x01" * 1600
+    buf.feed(loud, hold=True)
+    for _ in range(30):
+        assert buf.feed(silent, hold=True) is None
+    assert len(buf._buffer) > MIN_PCM_BYTES
+    pcm, reason = buf.flush_ptt()
+    assert reason == "ptt_flush_ok"
+    assert pcm is not None

@@ -35,7 +35,7 @@ if (-not (Test-Path -LiteralPath $asarCli)) {
     throw "Missing @electron/asar - run npm install in installer\electron"
 }
 if (-not (Test-Path -LiteralPath $makensis)) {
-    throw "Missing makensis.exe — install NSIS 3.x or use monorepo voice-pill\tools\nsis"
+    throw "Missing makensis.exe - install NSIS 3.x or use monorepo voice-pill\tools\nsis"
 }
 
 $resourcesDir = Join-Path $runtimeDir "resources"

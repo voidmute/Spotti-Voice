@@ -10,7 +10,16 @@ export async function resolveEngineBase(): Promise<string> {
   return "http://127.0.0.1:9777";
 }
 
-export type SettingsSection = "cloud" | "local" | "device";
+export type SettingsSection = "settings" | "history";
+
+export type TranscriptEntry = {
+  id: string;
+  text: string;
+  createdAt: string;
+  updatedAt?: string;
+  sttMode: "cloud" | "local";
+  injected: boolean;
+};
 
 export type VoiceSettings = {
   sttMode: "local" | "cloud";
@@ -38,13 +47,7 @@ export async function fetchSettings(base: string): Promise<VoiceSettings> {
     settingsSection?: string;
   };
   const section: SettingsSection =
-    data.settingsSection === "cloud" ||
-    data.settingsSection === "local" ||
-    data.settingsSection === "device"
-      ? data.settingsSection
-      : data.sttMode === "local"
-        ? "local"
-        : "cloud";
+    data.settingsSection === "history" ? "history" : "settings";
   return {
     ...data,
     settingsSection: section,
@@ -98,7 +101,36 @@ export type EngineEvent =
   | { type: "state"; state: string }
   | { type: "level"; level: number }
   | { type: "error"; message: string; code?: string }
-  | { type: "final"; text: string; injected: boolean };
+  | { type: "final"; text: string; injected: boolean }
+  | { type: "history"; entry: TranscriptEntry };
+
+export async function fetchHistory(base: string): Promise<TranscriptEntry[]> {
+  const res = await fetch(`${base}/api/history`);
+  if (!res.ok) throw new Error("History unavailable");
+  const data = (await res.json()) as { entries?: TranscriptEntry[] };
+  return Array.isArray(data.entries) ? data.entries : [];
+}
+
+export async function updateHistoryEntry(
+  base: string,
+  id: string,
+  text: string,
+): Promise<TranscriptEntry> {
+  const res = await fetch(`${base}/api/history/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  });
+  if (!res.ok) throw new Error("History update failed");
+  return res.json() as Promise<TranscriptEntry>;
+}
+
+export async function deleteHistoryEntry(base: string, id: string): Promise<void> {
+  const res = await fetch(`${base}/api/history/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) throw new Error("History delete failed");
+}
 
 export function subscribeEngineEvents(
   base: string,

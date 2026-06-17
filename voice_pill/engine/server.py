@@ -8,7 +8,7 @@ import logging
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -23,6 +23,12 @@ from voice_pill.engine.inject import (
 )
 from voice_pill.engine import ptt_hotkey
 from voice_pill.engine.settings_store import LOCAL_STT_LANGUAGE, load_settings, save_settings
+from voice_pill.engine.transcript_history import (
+    add_entry as history_add,
+    delete_entry as history_delete,
+    list_entries as history_list,
+    update_entry as history_update,
+)
 from voice_pill.engine.stt_cloud import cloud_stt_ready, transcribe_pcm as cloud_transcribe
 from voice_pill.engine.stt_language import LanguageMismatchError
 from voice_pill.engine.stt_local import local_stt_ready, transcribe_pcm as local_transcribe
@@ -184,6 +190,16 @@ async def _on_utterance(pcm: bytes) -> None:
         text,
         method=str(settings.get("injectMethod", "auto")),
     )
+    try:
+        entry = await asyncio.to_thread(
+            history_add,
+            text,
+            stt_mode=str(mode),
+            injected=ok,
+        )
+        await _broadcast({"type": "history", "entry": entry})
+    except ValueError:
+        pass
     await _broadcast({"type": "final", "text": text, "injected": ok})
     if not ok:
         await _broadcast_error("Не удалось вставить текст", code="inject_failed")
@@ -395,6 +411,31 @@ def audio_devices() -> dict[str, Any]:
         "devices": list_input_devices(),
         "selected": selected,
     }
+
+
+class HistoryPatch(BaseModel):
+    text: str
+
+
+@app.get("/api/history")
+def get_history() -> dict[str, Any]:
+    return {"entries": history_list()}
+
+
+@app.put("/api/history/{entry_id}")
+def put_history(entry_id: str, body: HistoryPatch) -> dict[str, Any]:
+    updated = history_update(entry_id, body.text)
+    if not updated:
+        raise HTTPException(status_code=404, detail="not_found")
+    return updated
+
+
+@app.delete("/api/history/{entry_id}")
+def delete_history(entry_id: str) -> dict[str, bool]:
+    ok = history_delete(entry_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="not_found")
+    return {"ok": True}
 
 
 @app.put("/api/settings")

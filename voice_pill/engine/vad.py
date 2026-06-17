@@ -61,11 +61,16 @@ class UtteranceBuffer:
         self._silent_ms = 0.0
         self._speech_seen = False
 
-    def feed(self, chunk: bytes) -> bytes | None:
+    def feed(self, chunk: bytes, *, hold: bool = False) -> bytes | None:
         if not chunk:
             return None
         chunk_ms = (len(chunk) / (TARGET_RATE * 2)) * 1000.0
         rms = audioop.rms(chunk, 2)
+        if hold:
+            self._buffer.extend(chunk)
+            if rms >= SILENCE_RMS:
+                self._speech_seen = True
+            return None
         if rms >= SILENCE_RMS:
             self._speech_seen = True
             self._silent_ms = 0.0

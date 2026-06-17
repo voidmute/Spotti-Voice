@@ -11,20 +11,21 @@ if not defined APP_VERSION set "APP_VERSION=0.1.0.0"
 
 echo [SPOTTI] Building SpottiVoice-Setup.exe (x64 single-file NSIS) v%APP_VERSION%
 
-if "%SKIP_APP%"=="0" (
-  echo [SPOTTI] Building application payload...
-  call "%~dp0build-exe.bat"
-  if errorlevel 1 exit /b 1
-) else (
-  if not exist "dist\electron\node_modules\electron\dist\Spotti Voice.exe" (
-    echo [SPOTTI] dist\electron\node_modules\electron\dist\Spotti Voice.exe missing. Run build-exe.bat first or omit -SkipAppBuild.
-    exit /b 1
-  )
-  if not exist "dist\Spotti Voice Engine.exe" (
-    echo [SPOTTI] dist\Spotti Voice Engine.exe missing. Run build-exe.bat first or omit -SkipAppBuild.
-    exit /b 1
-  )
+if not "%SKIP_APP%"=="0" goto :skip_app_build
+echo [SPOTTI] Building application payload...
+call "%~dp0build-exe.bat"
+if errorlevel 1 exit /b 1
+goto :after_app_build
+:skip_app_build
+if not exist "dist\electron\node_modules\electron\dist\Spotti Voice.exe" (
+  echo [SPOTTI] dist\electron\node_modules\electron\dist\Spotti Voice.exe missing. Run build-exe.bat first or omit -SkipAppBuild.
+  exit /b 1
 )
+if not exist "dist\Spotti Voice Engine.exe" (
+  echo [SPOTTI] dist\Spotti Voice Engine.exe missing. Run build-exe.bat first or omit -SkipAppBuild.
+  exit /b 1
+)
+:after_app_build
 
 where npm >nul 2>&1
 if errorlevel 1 (

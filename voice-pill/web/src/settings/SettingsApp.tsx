@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState, type ComponentType } from "react";
 import {
-  Cloud,
   Mic2,
   Loader2,
   CheckCircle2,
   AlertCircle,
   HardDrive,
   SlidersHorizontal,
+  History,
 } from "lucide-react";
 import {
   fetchSettings,
@@ -20,13 +20,13 @@ import { LanguageFlag } from "./LanguageFlag";
 import { languageFlagCountry } from "./voiceLanguages";
 import { CloudAuthPanel } from "./CloudAuthPanel";
 import { DevicePanel } from "./DevicePanel";
+import { HistoryPanel } from "./HistoryPanel";
+import { ModeSwitch, type SttMode } from "./ModeSwitch";
 import { SettingsTitleBar } from "./SettingsTitleBar";
 import "./settings.css";
 
-/** Local whisper.cpp build is Russian-only. */
 const LOCAL_STT_LANGUAGE = "ru";
 
-/** Best defaults for Windows - not exposed in setup. */
 const INJECT_DEFAULTS = {
   injectMethod: "auto",
   appendTrailingSpace: true,
@@ -35,12 +35,9 @@ const INJECT_DEFAULTS = {
 const AUTO_SAVE_MS = 200;
 const STATUS_CLEAR_MS = 2000;
 
-function normalizeSettingsSection(
-  value: unknown,
-  sttMode: VoiceSettings["sttMode"],
-): SettingsSection {
-  if (value === "cloud" || value === "local" || value === "device") return value;
-  return sttMode === "local" ? "local" : "cloud";
+function normalizeSettingsSection(value: unknown): SettingsSection {
+  if (value === "history") return "history";
+  return "settings";
 }
 
 function settingsPayload(settings: VoiceSettings) {
@@ -59,46 +56,37 @@ function settingsFingerprint(settings: VoiceSettings) {
   return JSON.stringify(settingsPayload(settings));
 }
 
-function SectionTabs({
+function SidebarNav({
   value,
   onChange,
 }: {
   value: SettingsSection;
   onChange: (section: SettingsSection) => void;
 }) {
-  const tabs: {
+  const items: {
     id: SettingsSection;
-    icon: typeof Cloud;
+    icon: ComponentType<{ size?: number; strokeWidth?: number }>;
     title: string;
-    hint: string;
   }[] = [
-    { id: "cloud", icon: Cloud, title: "Облако", hint: "Онлайн, много языков" },
-    { id: "local", icon: HardDrive, title: "Локально", hint: "На устройстве, русский" },
-    { id: "device", icon: SlidersHorizontal, title: "Настройки", hint: "Микрофон и клавиши" },
+    { id: "settings", icon: SlidersHorizontal, title: "Настройки" },
+    { id: "history", icon: History, title: "История" },
   ];
 
   return (
-    <nav className="settings-tabs" role="tablist" aria-label="Разделы настроек">
-      {tabs.map((tab) => {
-        const Icon = tab.icon;
+    <nav className="settings-rail" aria-label="Разделы">
+      {items.map((item) => {
+        const Icon = item.icon;
+        const active = value === item.id;
         return (
           <button
-            key={tab.id}
+            key={item.id}
             type="button"
-            role="tab"
-            id={`settings-tab-${tab.id}`}
-            aria-selected={value === tab.id}
-            aria-controls={`settings-panel-${tab.id}`}
-            className={`settings-tab${value === tab.id ? " is-active" : ""}`}
-            onClick={() => onChange(tab.id)}
+            className={`settings-rail__item${active ? " is-active" : ""}`}
+            aria-current={active ? "page" : undefined}
+            onClick={() => onChange(item.id)}
           >
-            <span className="settings-tab__icon" aria-hidden>
-              <Icon size={18} strokeWidth={2.25} />
-            </span>
-            <span className="settings-tab__copy">
-              <span className="settings-tab__title">{tab.title}</span>
-              <span className="settings-tab__hint">{tab.hint}</span>
-            </span>
+            <Icon size={18} strokeWidth={2.25} aria-hidden />
+            <span>{item.title}</span>
           </button>
         );
       })}
@@ -133,19 +121,17 @@ function LocalLanguageLocked() {
   );
 }
 
-function PanelIntro({
+function PanelHead({
   icon: Icon,
   title,
   description,
-  compact,
 }: {
   icon: ComponentType<{ size?: number; strokeWidth?: number }>;
   title: string;
   description: string;
-  compact?: boolean;
 }) {
   return (
-    <header className={`settings-panel__head${compact ? " settings-panel__head--compact" : ""}`}>
+    <header className="settings-panel__head">
       <div className="settings-panel__title-row">
         <Icon size={20} strokeWidth={2.25} aria-hidden />
         <h2>{title}</h2>
@@ -158,7 +144,7 @@ function PanelIntro({
 export function SettingsApp() {
   const [base, setBase] = useState("http://127.0.0.1:9777");
   const [settings, setSettings] = useState<VoiceSettings | null>(null);
-  const [section, setSection] = useState<SettingsSection>("cloud");
+  const [section, setSection] = useState<SettingsSection>("settings");
   const [status, setStatus] = useState("");
   const [statusKind, setStatusKind] = useState<"ok" | "err" | "">("");
   const [engineOnline, setEngineOnline] = useState<boolean | null>(null);
@@ -185,7 +171,7 @@ export function SettingsApp() {
             s.inputDeviceIndex === undefined || s.inputDeviceIndex === null
               ? null
               : Number(s.inputDeviceIndex),
-          settingsSection: normalizeSettingsSection(s.settingsSection, s.sttMode),
+          settingsSection: normalizeSettingsSection(s.settingsSection),
         };
         setSettings(normalized);
         setSection(normalized.settingsSection);
@@ -261,100 +247,79 @@ export function SettingsApp() {
   function onSectionChange(next: SettingsSection) {
     setSection(next);
     if (!settings) return;
+    setSettings({ ...settings, settingsSection: next });
+  }
+
+  function onModeChange(next: SttMode) {
+    if (!settings) return;
     if (next === "cloud") {
-      setSettings({ ...settings, sttMode: "cloud", settingsSection: next });
-    } else if (next === "local") {
+      setSettings({
+        ...settings,
+        sttMode: "cloud",
+        settingsSection: section,
+      });
+    } else {
       setSettings({
         ...settings,
         sttMode: "local",
         language: LOCAL_STT_LANGUAGE,
-        settingsSection: next,
+        settingsSection: section,
       });
-    } else {
-      setSettings({ ...settings, settingsSection: next });
     }
   }
 
-  const isCloud = section === "cloud";
-  const isLocal = section === "local";
-  const isDevice = section === "device";
+  const sttMode = settings?.sttMode ?? "local";
+  const isCloud = sttMode === "cloud";
+  const isSettings = section === "settings";
+  const isHistory = section === "history";
 
   return (
     <div className="settings-app">
-      <SettingsTitleBar />
+      <SettingsTitleBar
+        modeSwitch={
+          settings ? (
+            <ModeSwitch
+              value={sttMode}
+              onChange={onModeChange}
+              disabled={engineOnline !== true}
+            />
+          ) : null
+        }
+      />
 
       <div className="settings-body">
         <aside className="settings-sidebar">
-          <div className="settings-sidebar__brand">
-            <div className="settings-sidebar__mark" aria-hidden>
-              <img src="./white-only.png" alt="" />
-            </div>
-            <p className="settings-sidebar__tagline">
-              Удерживайте клавишу и говорите. Текст появится в активном поле.
-            </p>
-          </div>
-          {settings ? <SectionTabs value={section} onChange={onSectionChange} /> : null}
+          {settings ? (
+            <SidebarNav value={section} onChange={onSectionChange} />
+          ) : (
+            <div className="settings-sidebar__placeholder" />
+          )}
         </aside>
 
         <main className="settings-main">
           {!settings ? (
             <div className="settings-loading">
               <Loader2 className="settings-loading__spin" size={24} strokeWidth={2} />
-              <span>{status || "Загрузка настроек…"}</span>
+              <span>{status || "Загрузка…"}</span>
             </div>
           ) : (
             <div className="settings-shell">
-              <div
-                className={`settings-stage${isDevice || isCloud ? " settings-stage--scroll" : ""}`}
-                role="tabpanel"
-                id={
-                  isCloud
-                    ? "settings-panel-cloud"
-                    : isLocal
-                      ? "settings-panel-local"
-                      : "settings-panel-device"
-                }
-                aria-labelledby={
-                  isCloud
-                    ? "settings-tab-cloud"
-                    : isLocal
-                      ? "settings-tab-local"
-                      : "settings-tab-device"
-                }
-              >
-                {isCloud ? (
+              <div className="settings-stage settings-stage--scroll">
+                {isHistory ? (
                   <>
-                    <CloudAuthPanel base={base} />
-                    <PanelIntro
-                      icon={Mic2}
-                      title="Язык речи"
-                      description="Автоопределение подбирает язык само. Или выберите один язык вручную."
+                    <PanelHead
+                      icon={History}
+                      title="История"
+                      description="Фразы, которые вы продиктовали. Можно править, копировать или удалить."
                     />
-                    <LanguagePicker
-                      value={settings.language}
-                      onChange={(language) => setSettings({ ...settings, language })}
-                    />
+                    <HistoryPanel base={base} engineOnline={engineOnline === true} />
                   </>
-                ) : null}
-
-                {isLocal ? (
+                ) : isSettings ? (
                   <>
-                    <PanelIntro
-                      icon={HardDrive}
-                      title="Локально"
-                      description="Распознавание на вашем компьютере без отправки аудио в сеть."
-                    />
-                    <LocalLanguageLocked />
-                  </>
-                ) : null}
-
-                {isDevice ? (
-                  <>
-                    <PanelIntro
+                    <PanelHead
                       icon={SlidersHorizontal}
                       title="Настройки"
-                      description="Проверьте микрофон и назначьте горячую клавишу для записи."
-                      compact
+                      description="Микрофон и горячая клавиша для записи."
                     />
                     <DevicePanel
                       base={base}
@@ -367,6 +332,32 @@ export function SettingsApp() {
                       }
                     />
                   </>
+                ) : null}
+
+                {isSettings && isCloud ? (
+                  <section className="settings-mode-block" aria-label="Облачный режим">
+                    <CloudAuthPanel base={base} />
+                    <PanelHead
+                      icon={Mic2}
+                      title="Язык речи"
+                      description="Автоопределение или один язык вручную."
+                    />
+                    <LanguagePicker
+                      value={settings.language}
+                      onChange={(language) => setSettings({ ...settings, language })}
+                    />
+                  </section>
+                ) : null}
+
+                {isSettings && !isCloud ? (
+                  <section className="settings-mode-block" aria-label="Локальный режим">
+                    <PanelHead
+                      icon={HardDrive}
+                      title="Локальный режим"
+                      description="Распознавание на компьютере без отправки аудио в сеть."
+                    />
+                    <LocalLanguageLocked />
+                  </section>
                 ) : null}
               </div>
             </div>

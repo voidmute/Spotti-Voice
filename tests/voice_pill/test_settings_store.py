@@ -88,9 +88,19 @@ def test_clipboard_inject_migrates_to_auto(tmp_path, monkeypatch):
 
 def test_settings_section_persists(tmp_path, monkeypatch):
     monkeypatch.setenv("APPDATA", str(tmp_path))
+    save_settings({"settingsSection": "history"})
+    s = load_settings()
+    assert s["settingsSection"] == "history"
+
+
+def test_settings_section_migrates_legacy(tmp_path, monkeypatch):
+    monkeypatch.setenv("APPDATA", str(tmp_path))
     save_settings({"settingsSection": "device"})
     s = load_settings()
-    assert s["settingsSection"] == "device"
+    assert s["settingsSection"] == "settings"
+    save_settings({"settingsSection": "cloud"})
+    s = load_settings()
+    assert s["settingsSection"] == "settings"
 
 
 def test_settings_window_merge(tmp_path, monkeypatch):

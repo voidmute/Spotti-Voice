@@ -24,7 +24,7 @@ DEFAULTS: dict[str, Any] = {
     "appendTrailingSpace": True,
     "listenActive": False,
     "inputDeviceIndex": None,
-    "settingsSection": "local",
+    "settingsSection": "settings",
     "settingsWindow": {
         "open": False,
         "x": None,
@@ -48,16 +48,20 @@ def settings_path() -> Path:
     return _config_dir() / "settings.json"
 
 
+def _normalize_settings_section(section: Any) -> str:
+    if section in ("settings", "history"):
+        return str(section)
+    if section in ("config", "device", "cloud", "local"):
+        return "settings"
+    return "settings"
+
+
 def _apply_stt_rules(settings: dict[str, Any]) -> dict[str, Any]:
     if settings.get("sttMode") == "local":
         settings["language"] = LOCAL_STT_LANGUAGE
     elif settings.get("language") in (None, ""):
         settings["language"] = "auto"
-    section = settings.get("settingsSection")
-    if section not in ("cloud", "local", "device"):
-        settings["settingsSection"] = (
-            "local" if settings.get("sttMode") == "local" else "cloud"
-        )
+    settings["settingsSection"] = _normalize_settings_section(settings.get("settingsSection"))
     return settings
 
 
@@ -73,10 +77,6 @@ def _apply_cloud_preference(settings: dict[str, Any]) -> dict[str, Any]:
         pref = _default_stt_mode()
     settings["sttModePreference"] = pref
     settings["sttMode"] = pref
-    if pref == "cloud":
-        section = settings.get("settingsSection")
-        if section not in ("cloud", "local", "device"):
-            settings["settingsSection"] = "cloud"
     return settings
 
 
