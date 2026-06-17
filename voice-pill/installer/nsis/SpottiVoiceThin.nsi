@@ -21,6 +21,7 @@ Section "Bootstrap"
 
   SetOutPath "$PLUGINSDIR"
   File "..\scripts\thin-bootstrap.ps1"
+  File "..\scripts\run-bootstrap-hidden.vbs"
   File "..\..\dist-setup\bootstrap-manifest.json"
 
   SetOutPath "$PLUGINSDIR\vc-runtime"
@@ -32,7 +33,7 @@ Section "Bootstrap"
   File "..\prereqs\vc-runtime-x64\concrt140.dll"
 
   DetailPrint "Preparing Spotti Voice setup..."
-  ExecWait 'powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "$PLUGINSDIR\thin-bootstrap.ps1" -PluginDir "$PLUGINSDIR"' $0
+  ExecWait '"$SYSDIR\wscript.exe" //B //Nologo "$PLUGINSDIR\run-bootstrap-hidden.vbs" "$PLUGINSDIR"' $0
 
   ${If} $0 != 0
     Abort

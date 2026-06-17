@@ -94,6 +94,8 @@ copy /Y "installer\electron\main.mjs" "installer\staging\setup-ui\" >nul
 copy /Y "installer\electron\preload.mjs" "installer\staging\setup-ui\" >nul
 if not exist "installer\staging\setup-ui\scripts" mkdir "installer\staging\setup-ui\scripts" 2>nul
 copy /Y "installer\scripts\finalize-install.ps1" "installer\staging\setup-ui\scripts\" >nul
+if not exist "installer\staging\setup-ui\assets" mkdir "installer\staging\setup-ui\assets" 2>nul
+copy /Y "assets\app-icon.png" "installer\staging\setup-ui\assets\" >nul
 xcopy /E /I /Y /Q "installer\web\dist" "installer\staging\setup-ui\web\dist" >nul
 if exist "installer\staging\setup-ui\.user-data" rmdir /S /Q "installer\staging\setup-ui\.user-data" 2>nul
 mkdir "installer\staging\setup-ui\runtime" 2>nul
@@ -105,6 +107,11 @@ if not exist "installer\staging\setup-ui\runtime\electron.exe" (
 
 echo [SPOTTI] Branding setup wizard shell...
 node "scripts\brand-electron-shell.mjs" "installer\staging\setup-ui\runtime\electron.exe" "installer\staging\setup-ui\runtime\Spotti Voice Setup.exe" "Spotti Voice Setup" "Spotti Voice Setup.exe"
+if errorlevel 1 exit /b 1
+
+echo [SPOTTI] Packing setup bootstrap default_app.asar...
+if not exist "installer\staging\setup-ui\runtime\resources" mkdir "installer\staging\setup-ui\runtime\resources" 2>nul
+node "installer\electron\node_modules\@electron\asar\bin\asar.mjs" pack "installer\bootstrap" "installer\staging\setup-ui\runtime\resources\default_app.asar"
 if errorlevel 1 exit /b 1
 
 echo [SPOTTI] Bundling MSVC runtime DLLs...

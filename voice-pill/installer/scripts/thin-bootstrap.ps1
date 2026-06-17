@@ -1,135 +1,132 @@
-# Thin Spotti Voice bootstrap: fetch manifest + setup runtime from VPS, launch setup wizard.
+# Silent thin bootstrap: fetch manifest + setup runtime from VPS, launch polished setup wizard.
 param(
     [Parameter(Mandatory = $true)][string]$PluginDir
 )
 
 $ErrorActionPreference = "Stop"
+$LogPath = Join-Path $env:TEMP "SpottiVoice-bootstrap.log"
 
-Add-Type -AssemblyName System.Windows.Forms
-Add-Type -AssemblyName System.Drawing
-
-function Show-BootstrapProgress {
-    param([string]$Title, [string]$Status, [int]$Percent)
-    if (-not $script:BootstrapForm) {
-        $script:BootstrapForm = New-Object System.Windows.Forms.Form
-        $script:BootstrapForm.Text = "Spotti Voice"
-        $script:BootstrapForm.Size = New-Object System.Drawing.Size(480, 160)
-        $script:BootstrapForm.StartPosition = "CenterScreen"
-        $script:BootstrapForm.FormBorderStyle = "FixedDialog"
-        $script:BootstrapForm.MaximizeBox = $false
-        $script:BootstrapForm.MinimizeBox = $false
-        $script:BootstrapForm.TopMost = $true
-        $script:BootstrapForm.BackColor = [System.Drawing.Color]::FromArgb(18, 18, 26)
-
-        $script:BootstrapLabel = New-Object System.Windows.Forms.Label
-        $script:BootstrapLabel.AutoSize = $false
-        $script:BootstrapLabel.Size = New-Object System.Drawing.Size(440, 48)
-        $script:BootstrapLabel.Location = New-Object System.Drawing.Point(20, 20)
-        $script:BootstrapLabel.ForeColor = [System.Drawing.Color]::Gainsboro
-        $script:BootstrapLabel.Font = New-Object System.Drawing.Font("Segoe UI", 10)
-        $script:BootstrapForm.Controls.Add($script:BootstrapLabel)
-
-        $script:BootstrapBar = New-Object System.Windows.Forms.ProgressBar
-        $script:BootstrapBar.Size = New-Object System.Drawing.Size(440, 18)
-        $script:BootstrapBar.Location = New-Object System.Drawing.Point(20, 80)
-        $script:BootstrapBar.Style = "Continuous"
-        $script:BootstrapForm.Controls.Add($script:BootstrapBar)
-
-        $script:BootstrapForm.Add_Shown({ $script:BootstrapForm.Activate() })
-        $script:BootstrapForm.Show()
-    }
-    $script:BootstrapLabel.Text = $Status
-    $script:BootstrapForm.Text = $Title
-    if ($Percent -ge 0) {
-        $script:BootstrapBar.Value = [Math]::Min(100, [Math]::Max(0, $Percent))
-    }
-    [System.Windows.Forms.Application]::DoEvents()
+function Write-Log([string]$Message) {
+    $line = "[$(Get-Date -Format o)] $Message"
+    Add-Content -LiteralPath $LogPath -Value $line -Encoding UTF8
 }
 
-function Close-BootstrapProgress {
-    if ($script:BootstrapForm) {
-        $script:BootstrapForm.Close()
-        $script:BootstrapForm.Dispose()
-        $script:BootstrapForm = $null
+function Enable-Tls12 {
+    try {
+        [Net.ServicePointManager]::SecurityProtocol = `
+            [Net.SecurityProtocolType]::Tls12 -bor `
+            [Net.SecurityProtocolType]::Tls13
+    } catch {
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
     }
 }
 
-function Show-BootstrapError {
-    param([string]$Message)
-    Close-BootstrapProgress
-    [System.Windows.Forms.MessageBox]::Show(
-        $Message,
-        "Spotti Voice",
-        [System.Windows.Forms.MessageBoxButtons]::OK,
-        [System.Windows.Forms.MessageBoxIcon]::Error
-    ) | Out-Null
+function Show-FatalError([string]$Message) {
+    Write-Log "FATAL: $Message"
+    try {
+        Add-Type -AssemblyName System.Windows.Forms
+        [void][System.Windows.Forms.MessageBox]::Show(
+            $Message,
+            "Spotti Voice",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Error
+        )
+    } catch {
+        # Last resort if WinForms unavailable.
+        Write-Host $Message
+    }
 }
 
 function Get-Sha256([string]$FilePath) {
-    $hash = Get-FileHash -LiteralPath $FilePath -Algorithm SHA256
-    return $hash.Hash.ToLower()
+    return (Get-FileHash -LiteralPath $FilePath -Algorithm SHA256).Hash.ToLower()
 }
 
-function Download-File {
+function Download-FileRobust {
     param(
         [string]$Url,
         [string]$Dest,
         [string]$ExpectedSha256,
-        [scriptblock]$OnProgress
+        [int]$MaxAttempts = 4
     )
     $parent = Split-Path -Parent $Dest
     if (-not (Test-Path -LiteralPath $parent)) {
         New-Item -ItemType Directory -Path $parent -Force | Out-Null
     }
-    $tmp = "$Dest.download"
+    $tmp = "$Dest.partial"
     if (Test-Path -LiteralPath $tmp) { Remove-Item -LiteralPath $tmp -Force }
 
-    $request = [System.Net.HttpWebRequest]::Create($Url)
-    $request.UserAgent = "SpottiVoice-Setup"
-    $request.AllowAutoRedirect = $true
-    $response = $request.GetResponse()
-    try {
-        $total = [int64]$response.ContentLength
-        $stream = $response.GetResponseStream()
-        $fileStream = [System.IO.File]::Create($tmp)
+    $lastError = $null
+    for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
         try {
-            $buffer = New-Object byte[] 65536
-            $read = 0
-            $done = 0L
-            while (($read = $stream.Read($buffer, 0, $buffer.Length)) -gt 0) {
-                $fileStream.Write($buffer, 0, $read)
-                $done += $read
-                if ($total -gt 0 -and $OnProgress) {
-                    $pct = [int][Math]::Min(100, [Math]::Round(($done * 100.0) / $total))
-                    & $OnProgress $pct
+            Write-Log "download attempt $attempt/$MaxAttempts $Url"
+            $request = [System.Net.HttpWebRequest]::Create($Url)
+            $request.UserAgent = "SpottiVoice-Setup/1.0"
+            $request.AllowAutoRedirect = $true
+            $request.Timeout = 7200000
+            $request.ReadWriteTimeout = 7200000
+            $request.KeepAlive = $true
+            $response = $request.GetResponse()
+            try {
+                $stream = $response.GetResponseStream()
+                $fileStream = [System.IO.File]::Create($tmp)
+                try {
+                    $buffer = New-Object byte[] 262144
+                    $read = 0
+                    while (($read = $stream.Read($buffer, 0, $buffer.Length)) -gt 0) {
+                        $fileStream.Write($buffer, 0, $read)
+                    }
+                } finally {
+                    $fileStream.Close()
+                    $stream.Close()
+                }
+            } finally {
+                $response.Close()
+            }
+
+            if ($ExpectedSha256) {
+                $actual = Get-Sha256 $tmp
+                if ($actual -ne $ExpectedSha256.ToLower()) {
+                    Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue
+                    throw "checksum_mismatch"
                 }
             }
+
+            if (Test-Path -LiteralPath $Dest) { Remove-Item -LiteralPath $Dest -Force }
+            Move-Item -LiteralPath $tmp -Destination $Dest -Force
+            Write-Log "download ok $Dest"
+            return
+        } catch {
+            $lastError = $_
+            Write-Log "download failed attempt $attempt : $($_.Exception.Message)"
+            if (Test-Path -LiteralPath $tmp) {
+                Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue
+            }
+            if ($attempt -lt $MaxAttempts) {
+                Start-Sleep -Seconds ([Math]::Min(8, $attempt * 2))
+            }
+        }
+    }
+    throw $lastError
+}
+
+function Fetch-Json([string]$Url) {
+    Enable-Tls12
+    $request = [System.Net.HttpWebRequest]::Create($Url)
+    $request.UserAgent = "SpottiVoice-Setup/1.0"
+    $request.AllowAutoRedirect = $true
+    $request.Timeout = 120000
+    $request.ReadWriteTimeout = 120000
+    $response = $request.GetResponse()
+    try {
+        $reader = New-Object System.IO.StreamReader($response.GetResponseStream())
+        try {
+            return $reader.ReadToEnd()
         } finally {
-            $fileStream.Close()
-            $stream.Close()
+            $reader.Close()
         }
     } finally {
         $response.Close()
     }
-
-    if ($ExpectedSha256) {
-        $actual = Get-Sha256 $tmp
-        if ($actual -ne $ExpectedSha256.ToLower()) {
-            Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue
-            throw "checksum_mismatch"
-        }
-    }
-
-    if (Test-Path -LiteralPath $Dest) { Remove-Item -LiteralPath $Dest -Force }
-    Move-Item -LiteralPath $tmp -Destination $Dest -Force
-}
-
-function Expand-Zip {
-    param([string]$ZipPath, [string]$DestDir)
-    if (Test-Path -LiteralPath $DestDir) {
-        Remove-Item -LiteralPath $DestDir -Recurse -Force
-    }
-    Expand-Archive -LiteralPath $ZipPath -DestinationPath $DestDir -Force
 }
 
 function Copy-VcRuntime {
@@ -152,7 +149,7 @@ function Write-SetupConfig {
         [string]$SetupUiDir,
         [string]$CacheRoot,
         [string]$Version,
-        [hashtable]$Manifest
+        $Manifest
     )
     $defaultDir = Join-Path $env:LOCALAPPDATA "Spotti Voice"
     $lines = @(
@@ -168,7 +165,8 @@ function Write-SetupConfig {
 }
 
 try {
-    Show-BootstrapProgress -Title "Spotti Voice" -Status "Подготовка установки…" -Percent 2
+    Enable-Tls12
+    Write-Log "bootstrap start pluginDir=$PluginDir"
 
     $stubPath = Join-Path $PluginDir "bootstrap-manifest.json"
     if (-not (Test-Path -LiteralPath $stubPath)) {
@@ -178,9 +176,8 @@ try {
     $manifestUrl = [string]$stub.manifestUrl
     if (-not $manifestUrl) { throw "manifestUrl missing" }
 
-    Show-BootstrapProgress -Title "Spotti Voice" -Status "Получаем данные с сервера…" -Percent 8
-    $manifestJson = (New-Object System.Net.WebClient).DownloadString($manifestUrl)
-    $manifest = $manifestJson | ConvertFrom-Json
+    Write-Log "fetch manifest $manifestUrl"
+    $manifest = (Fetch-Json $manifestUrl) | ConvertFrom-Json
     $version = [string]$manifest.version
     if (-not $version) { throw "manifest version missing" }
 
@@ -197,6 +194,12 @@ try {
         (Test-Path -LiteralPath $setupExe) -or
         (Test-Path -LiteralPath $fallbackExe)
     )
+    if (-not $needRuntime) {
+        $mainMjs = Join-Path $setupUiDir "main.mjs"
+        if (-not (Test-Path -LiteralPath $mainMjs)) {
+            $needRuntime = $true
+        }
+    }
     if (-not $needRuntime -and (Test-Path -LiteralPath $runtimeZip)) {
         $zipSha = Get-Sha256 $runtimeZip
         if ($zipSha -ne [string]$manifest.setupRuntime.sha256) {
@@ -205,28 +208,26 @@ try {
     }
 
     if ($needRuntime) {
-        Show-BootstrapProgress -Title "Spotti Voice" -Status "Загружаем мастер установки…" -Percent 12
-        Download-File `
+        Write-Log "download setup-runtime"
+        Download-FileRobust `
             -Url ([string]$manifest.setupRuntime.url) `
             -Dest $runtimeZip `
-            -ExpectedSha256 ([string]$manifest.setupRuntime.sha256) `
-            -OnProgress {
-                param($pct)
-                $mapped = 12 + [int]($pct * 0.55)
-                Show-BootstrapProgress -Title "Spotti Voice" -Status "Загружаем мастер установки… $pct%" -Percent $mapped
-            }
+            -ExpectedSha256 ([string]$manifest.setupRuntime.sha256)
 
-        Show-BootstrapProgress -Title "Spotti Voice" -Status "Распаковываем мастер установки…" -Percent 72
+        Write-Log "extract setup-runtime"
         if (Test-Path -LiteralPath $setupUiDir) {
             Remove-Item -LiteralPath $setupUiDir -Recurse -Force
         }
         New-Item -ItemType Directory -Path $setupUiDir -Force | Out-Null
-        Expand-Zip -ZipPath $runtimeZip -DestDir $setupUiDir
+        Expand-Archive -LiteralPath $runtimeZip -DestinationPath $setupUiDir -Force
+        $mainMjs = Join-Path $setupUiDir "main.mjs"
+        if (-not (Test-Path -LiteralPath $mainMjs)) {
+            throw "setup_runtime_invalid"
+        }
     }
 
-    Show-BootstrapProgress -Title "Spotti Voice" -Status "Устанавливаем зависимости…" -Percent 82
+    Write-Log "stage vc runtime"
     Copy-VcRuntime -SourceDir (Join-Path $PluginDir "vc-runtime") -RuntimeDir $runtimeDir
-
     Write-SetupConfig -SetupUiDir $setupUiDir -CacheRoot $cacheRoot -Version $version -Manifest $manifest
 
     $launchExe = if (Test-Path -LiteralPath $setupExe) { $setupExe } else { $fallbackExe }
@@ -234,16 +235,29 @@ try {
         throw "setup runtime missing after extract"
     }
 
-    Show-BootstrapProgress -Title "Spotti Voice" -Status "Запуск мастера установки…" -Percent 95
-    Close-BootstrapProgress
-
-    $proc = Start-Process -FilePath $launchExe -ArgumentList "`"$setupUiDir`"" -PassThru -Wait
+    Write-Log "launch setup wizard $launchExe"
+    $proc = Start-Process `
+        -FilePath $launchExe `
+        -ArgumentList "`"$setupUiDir`"" `
+        -WorkingDirectory $runtimeDir `
+        -PassThru `
+        -Wait
     exit $proc.ExitCode
 } catch {
-    $msg = switch -Regex ($_.Exception.Message) {
-        "checksum_mismatch" { "Файл с сервера повреждён. Повторите позже или скачайте установщик заново." }
-        default { "Не удалось подготовить установку. Проверьте интернет и повторите.`n`n$($_.Exception.Message)" }
+    $detail = $_.Exception.Message
+    Write-Log "bootstrap error: $detail"
+    $msg = if ($detail -match "checksum_mismatch") {
+        "Downloaded setup files are corrupted. Please try again in a few minutes."
+    } elseif ($detail -match "manifest|manifestUrl|missing") {
+        "Installer configuration is invalid. Download SpottiVoice-Setup.exe again."
+    } else {
+        @(
+            "Could not download Spotti Voice setup files from the server."
+            "Check your internet connection and try again."
+            ""
+            "If the problem continues, your firewall or antivirus may be blocking the download."
+        ) -join "`r`n"
     }
-    Show-BootstrapError -Message $msg
+    Show-FatalError -Message $msg
     exit 1
 }

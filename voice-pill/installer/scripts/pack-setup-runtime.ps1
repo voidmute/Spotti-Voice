@@ -15,7 +15,8 @@ $required = @(
     "package.json",
     "payload-manifest.json",
     "runtime\electron.exe",
-    "web\dist\index.html"
+    "web\dist\index.html",
+    "assets\app-icon.png"
 )
 foreach ($rel in $required) {
     if (-not (Test-Path -LiteralPath (Join-Path $SetupUiDir $rel))) {
@@ -31,6 +32,17 @@ if (Test-Path -LiteralPath $ZipOut) {
     Remove-Item -LiteralPath $ZipOut -Force
 }
 
-$items = Get-ChildItem -LiteralPath $SetupUiDir -Force
-Compress-Archive -Path ($items | ForEach-Object { $_.FullName }) -DestinationPath $ZipOut -CompressionLevel Optimal -Force
+$setupUiAbs = (Resolve-Path -LiteralPath $SetupUiDir).Path
+$zipOutAbs = (Resolve-Path -LiteralPath $zipDir).Path + "\" + (Split-Path -Leaf $ZipOut)
+
+Push-Location $setupUiAbs
+try {
+    & tar.exe -a -c -f $zipOutAbs .
+    if ($LASTEXITCODE -ne 0) {
+        throw "tar pack failed (exit $LASTEXITCODE)"
+    }
+} finally {
+    Pop-Location
+}
+
 Write-Host "[SPOTTI] setup-runtime.zip: $ZipOut"
