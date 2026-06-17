@@ -114,6 +114,12 @@ export default function App() {
         const pct = Math.min(100, Math.round(((payload.copied || 0) / payload.total) * 100));
         setProgressPct(pct);
         setProgressLabel(humanProgressLabel(pct, payload.currentFile));
+      } else if (payload.phase === "download") {
+        const pct = typeof payload.pct === "number" ? payload.pct : 0;
+        setProgressPct(pct);
+        setProgressLabel(
+          typeof payload.label === "string" ? payload.label : "Загружаем файлы…",
+        );
       } else if (payload.phase === "prepare") {
         setProgressLabel(
           typeof payload.label === "string" ? payload.label : "Подготавливаем установку…",

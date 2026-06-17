@@ -4,12 +4,16 @@ chcp 65001 >nul
 cd /d "%~dp0"
 
 set "SKIP_APP=0"
+set "BUNDLE_LEGACY=0"
 if /I "%~1"=="-SkipAppBuild" set "SKIP_APP=1"
+if /I "%~1"=="-BundleLegacy" set "BUNDLE_LEGACY=1"
+if /I "%~2"=="-SkipAppBuild" set "SKIP_APP=1"
+if /I "%~2"=="-BundleLegacy" set "BUNDLE_LEGACY=1"
 
 for /f "usebackq delims=" %%V in ("installer\VERSION") do set "APP_VERSION=%%V"
 if not defined APP_VERSION set "APP_VERSION=0.1.0.0"
 
-echo [SPOTTI] Building SpottiVoice-Setup.exe (x64 single-file NSIS) v%APP_VERSION%
+echo [SPOTTI] Building SpottiVoice-Setup.exe (thin VPS bootstrap) v%APP_VERSION%
 
 if not "%SKIP_APP%"=="0" goto :skip_app_build
 echo [SPOTTI] Building application payload...
@@ -88,6 +92,8 @@ copy /Y "installer\electron\package.json" "installer\staging\setup-ui\" >nul
 copy /Y "installer\electron\package-lock.json" "installer\staging\setup-ui\" >nul 2>nul
 copy /Y "installer\electron\main.mjs" "installer\staging\setup-ui\" >nul
 copy /Y "installer\electron\preload.mjs" "installer\staging\setup-ui\" >nul
+if not exist "installer\staging\setup-ui\scripts" mkdir "installer\staging\setup-ui\scripts" 2>nul
+copy /Y "installer\scripts\finalize-install.ps1" "installer\staging\setup-ui\scripts\" >nul
 xcopy /E /I /Y /Q "installer\web\dist" "installer\staging\setup-ui\web\dist" >nul
 if exist "installer\staging\setup-ui\.user-data" rmdir /S /Q "installer\staging\setup-ui\.user-data" 2>nul
 mkdir "installer\staging\setup-ui\runtime" 2>nul
@@ -110,11 +116,21 @@ if errorlevel 1 (
 
 if not exist "dist-setup" mkdir "dist-setup"
 
-echo [SPOTTI] Building x64 SpottiVoice-Setup.exe (single-file NSIS)...
-powershell -NoProfile -ExecutionPolicy Bypass -File "installer\scripts\build-nsis-installer.ps1" -StagingDir "installer\staging" -OutFile "dist-setup\SpottiVoice-Setup.exe" -Version "%APP_VERSION%"
-if errorlevel 1 (
-  echo [SPOTTI] build-nsis-installer.ps1 failed.
-  exit /b 1
+echo [SPOTTI] Packing VPS release assets...
+copy /Y "installer\staging\payload.zip" "dist-setup\payload.zip" >nul
+powershell -NoProfile -ExecutionPolicy Bypass -File "installer\scripts\pack-setup-runtime.ps1" -SetupUiDir "installer\staging\setup-ui" -ZipOut "dist-setup\setup-runtime.zip"
+if errorlevel 1 exit /b 1
+powershell -NoProfile -ExecutionPolicy Bypass -File "installer\scripts\write-release-manifest.ps1" -Version "%APP_VERSION%" -OutFile "dist-setup\manifest.json"
+if errorlevel 1 exit /b 1
+
+if "%BUNDLE_LEGACY%"=="1" (
+  echo [SPOTTI] Building legacy bundled NSIS installer...
+  powershell -NoProfile -ExecutionPolicy Bypass -File "installer\scripts\build-nsis-installer.ps1" -StagingDir "installer\staging" -OutFile "dist-setup\SpottiVoice-Setup-legacy.exe" -Version "%APP_VERSION%"
+  if errorlevel 1 exit /b 1
+) else (
+  echo [SPOTTI] Building thin SpottiVoice-Setup.exe ^(VPS assets, max 20 MB^)...
+  powershell -NoProfile -ExecutionPolicy Bypass -File "installer\scripts\build-thin-nsis.ps1" -OutFile "dist-setup\SpottiVoice-Setup.exe" -Version "%APP_VERSION%"
+  if errorlevel 1 exit /b 1
 )
 
 echo [SPOTTI] Writing SHA256...
@@ -122,7 +138,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "$h=(Get-FileHash -Litera
 if errorlevel 1 exit /b 1
 
 echo.
-echo [OK] dist-setup\SpottiVoice-Setup.exe ^(single file — ship this alone^)
+echo [OK] dist-setup\SpottiVoice-Setup.exe ^(thin bootstrap — upload assets to VPS^)
+echo [OK] dist-setup\manifest.json + setup-runtime.zip + payload.zip
+echo [OK] Upload: .\scripts\deploy\sync-voice-installer-assets.ps1
 echo [OK] dist-setup\SpottiVoice-Setup.sha256
 exit /b 0
 

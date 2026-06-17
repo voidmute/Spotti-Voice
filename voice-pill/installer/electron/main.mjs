@@ -1,5 +1,6 @@
 import { app, BrowserWindow, dialog, ipcMain, nativeImage } from "electron";
 import { spawn } from "node:child_process";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import fsp from "node:fs/promises";
 import path from "node:path";
@@ -70,6 +71,8 @@ const PAYLOAD_ARCHIVE =
   process.env.SPOTTI_SETUP_PAYLOAD_ARCHIVE ||
   setupConfig?.payloadArchive ||
   bundledPaths.payloadArchive;
+const PAYLOAD_ARCHIVE_URL = setupConfig?.payloadArchiveUrl || "";
+const PAYLOAD_ARCHIVE_SHA256 = setupConfig?.payloadArchiveSha256 || "";
 const STATE_FILE =
   process.env.SPOTTI_SETUP_STATE_FILE || setupConfig?.stateFile || bundledPaths.stateFile;
 const DEFAULT_DIR =
@@ -101,25 +104,24 @@ function pluginStateDir() {
   return __dirname;
 }
 
-const PORTABLE_RUNTIME_FILES = ["icudtl.dat", "resources.pak", "payload.zip", "main.mjs"];
+function resolvePayloadArchivePath() {
+  if (PAYLOAD_ARCHIVE_URL) {
+    return path.join(pluginStateDir(), "payload.zip");
+  }
+  return PAYLOAD_ARCHIVE;
+}
 
 function assertPortableRuntime() {
   const root = installRootDir();
-  const nsisBootstrap = Boolean(setupConfig?.payloadArchive);
-  const required = nsisBootstrap
-    ? ["icudtl.dat", "resources.pak"]
-    : PORTABLE_RUNTIME_FILES;
+  const required = ["icudtl.dat", "resources.pak"];
   const missing = required.filter((name) => !fs.existsSync(path.join(root, name)));
   if (missing.length === 0) return;
 
-  setupLog(`runtime incomplete: missing ${missing.join(", ")} (root=${root}, nsis=${nsisBootstrap})`);
+  setupLog(`runtime incomplete: missing ${missing.join(", ")} (root=${root})`);
   const detail = missing.join(", ");
-  const hint = nsisBootstrap
-    ? "Скачайте SpottiVoice-Setup.exe заново с официального релиза и запустите его снова."
-    : "Скачайте полный архив SpottiVoice-Setup-*.zip из Releases, распакуйте и запустите SpottiVoice-Setup.exe из распакованной папки.";
   dialog.showErrorBox(
     "Spotti Voice — установка",
-    `Не удалось запустить установщик (не хватает: ${detail}).\n\n${hint}`,
+    `Не удалось запустить установщик (не хватает: ${detail}).\n\nПовторите установку или скачайте SpottiVoice-Setup.exe заново.`,
   );
   app.exit(11);
 }
@@ -173,20 +175,80 @@ async function extractPayloadArchive(archivePath, destDir) {
   });
 }
 
+async function downloadPayloadArchive(url, destPath, expectedSha256) {
+  setupLog(`downloading payload from ${url}`);
+  sendProgress({ phase: "download", pct: 0, label: "Загружаем приложение…" });
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error("Не удалось загрузить приложение с сервера. Проверьте интернет.");
+  }
+  const total = Number(res.headers.get("content-length")) || 0;
+  const hash = crypto.createHash("sha256");
+  const tmp = `${destPath}.partial`;
+  await ofsp.mkdir(path.dirname(destPath), { recursive: true });
+  const file = ofs.createWriteStream(tmp);
+  let received = 0;
+  try {
+    if (!res.body) {
+      throw new Error("download_failed");
+    }
+    for await (const chunk of res.body) {
+      if (installCancelled) {
+        throw new Error("cancelled");
+      }
+      const buf = Buffer.from(chunk);
+      hash.update(buf);
+      received += buf.length;
+      await new Promise((resolve, reject) => {
+        file.write(buf, (err) => (err ? reject(err) : resolve()));
+      });
+      if (total > 0) {
+        const pct = Math.min(100, Math.round((received / total) * 100));
+        sendProgress({ phase: "download", pct, label: `Загружаем приложение… ${pct}%` });
+      }
+    }
+  } finally {
+    await new Promise((resolve) => file.end(resolve));
+  }
+  const digest = hash.digest("hex");
+  if (expectedSha256 && digest.toLowerCase() !== expectedSha256.toLowerCase()) {
+    await ofsp.unlink(tmp).catch(() => {});
+    throw new Error("Файл приложения повреждён. Повторите установку позже.");
+  }
+  if (await pathExists(destPath)) {
+    await ofsp.unlink(destPath);
+  }
+  await ofsp.rename(tmp, destPath);
+  sendProgress({ phase: "download", pct: 100, label: "Загрузка завершена" });
+}
+
+async function ensurePayloadArchiveReady(archivePath) {
+  if (await pathExists(archivePath)) {
+    return archivePath;
+  }
+  if (PAYLOAD_ARCHIVE_URL) {
+    await downloadPayloadArchive(PAYLOAD_ARCHIVE_URL, archivePath, PAYLOAD_ARCHIVE_SHA256);
+    return archivePath;
+  }
+  return archivePath;
+}
+
 async function ensurePayloadExtracted() {
-  const dest = PAYLOAD_DIR || path.join(path.dirname(PAYLOAD_ARCHIVE || __dirname), "payload");
+  const dest = PAYLOAD_DIR || path.join(path.dirname(resolvePayloadArchivePath() || __dirname), "payload");
   const mainExe = uiExePath(dest);
   if ((await pathExists(mainExe))) {
     return dest;
   }
-  if (!PAYLOAD_ARCHIVE || !(await pathExists(PAYLOAD_ARCHIVE))) {
-    throw new Error("Пакет приложения не найден. Скачайте установщик Spotti Voice заново.");
+  const archivePath = resolvePayloadArchivePath();
+  await ensurePayloadArchiveReady(archivePath);
+  if (!archivePath || !(await pathExists(archivePath))) {
+    throw new Error("Пакет приложения не найден. Проверьте интернет и запустите установщик снова.");
   }
   setupLog(`extracting payload archive -> ${dest}`);
   sendProgress({ phase: "prepare", label: "Подготавливаем файлы…" });
-  await extractPayloadArchive(PAYLOAD_ARCHIVE, dest);
+  await extractPayloadArchive(archivePath, dest);
   if (!(await pathExists(mainExe))) {
-    throw new Error("Не удалось распаковать приложение. Скачайте установщик заново.");
+    throw new Error("Не удалось распаковать приложение. Повторите установку.");
   }
   return dest;
 }
@@ -203,8 +265,19 @@ async function resolveSetupDiagnostics() {
   const fileCount = manifest?.fileCount ?? 0;
   const payloadBytes = manifest?.payloadBytes ?? 0;
 
-  if (PAYLOAD_ARCHIVE && !(await pathExists(PAYLOAD_ARCHIVE))) {
-    setupLog(`payload archive missing: ${PAYLOAD_ARCHIVE}`);
+  if (PAYLOAD_ARCHIVE_URL) {
+    return {
+      ok: true,
+      version,
+      defaultDir: DEFAULT_DIR,
+      fileCount,
+      payloadBytes,
+    };
+  }
+
+  const archivePath = resolvePayloadArchivePath();
+  if (archivePath && !(await pathExists(archivePath))) {
+    setupLog(`payload archive missing: ${archivePath}`);
     return {
       ok: false,
       error: "Пакет приложения не найден. Запустите установщик Spotti Voice снова.",
@@ -236,7 +309,6 @@ async function resolveSetupDiagnostics() {
     defaultDir: DEFAULT_DIR,
     fileCount,
     payloadBytes,
-    logPath: SETUP_LOG,
   };
 }
 

@@ -10,7 +10,30 @@ build-exe.bat
 build-setup.bat
 ```
 
-Artifact: `voice-pill/dist-setup/SpottiVoice-Setup.exe` (single self-contained NSIS installer)
+Artifact: `voice-pill/dist-setup/SpottiVoice-Setup.exe` (thin bootstrap, under 20 MB)
+
+Heavy assets ship separately to VPS:
+
+- `dist-setup/manifest.json`
+- `dist-setup/setup-runtime.zip` (setup wizard + Electron runtime)
+- `dist-setup/payload.zip` (app files)
+
+Upload to VPS after build:
+
+```powershell
+.\scripts\deploy\sync-voice-installer-assets.ps1
+```
+
+Public URL base: `https://spottibot.duckdns.org/downloads/voice/{version}/`
+
+Legacy single-file installer (optional, ~400 MB):
+
+```bat
+cd voice-pill
+build-setup.bat -BundleLegacy
+```
+
+Produces `dist-setup\SpottiVoice-Setup-legacy.exe`.
 
 Compute SHA256:
 
@@ -23,10 +46,11 @@ Also written to `dist-setup/SpottiVoice-Setup.sha256` by `build-setup.bat`.
 ## GitHub Release (public `Spotti-Voice` repo)
 
 1. Export tree: `.\scripts\migrate\export-voice-public.ps1 -OutDir ..\Spotti-Voice`
-2. Attach **`SpottiVoice-Setup.exe`** + **`SpottiVoice-Setup.sha256`**
-3. Tag matches `voice-pill/installer/VERSION`
+2. Upload VPS assets: `.\scripts\deploy\sync-voice-installer-assets.ps1`
+3. Attach **`SpottiVoice-Setup.exe`** + **`SpottiVoice-Setup.sha256`**
+4. Tag matches `voice-pill/installer/VERSION`
 
-Users download one exe, double-click, wizard installs to Program Files.
+Users download the small exe; bootstrap fetches setup UI + app payload from VPS.
 
 ## Manual smoke (fresh VM)
 
