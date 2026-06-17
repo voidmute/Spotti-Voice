@@ -156,11 +156,11 @@ exe_ok:
   WriteUninstaller "$INSTDIR\Uninstall.exe"
 
   CreateDirectory "$SMPROGRAMS\Spotti Voice"
-  CreateShortcut "$SMPROGRAMS\Spotti Voice\${APP_NAME}.lnk" "$INSTDIR\${LAUNCH_UI}" "" "$INSTDIR\${APP_EXE}" 0
+  CreateShortcut "$SMPROGRAMS\Spotti Voice\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}" '"$INSTDIR\${ELECTRON_DIR_REL}"' "$INSTDIR\${APP_EXE}" 0
   CreateShortcut "$SMPROGRAMS\Spotti Voice\Uninstall.lnk" "$INSTDIR\Uninstall.exe"
 
   IfFileExists "$PLUGINSDIR\desktop-shortcut.flag" 0 no_desktop
-    CreateShortcut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\${LAUNCH_UI}" "" "$INSTDIR\${APP_EXE}" 0
+    CreateShortcut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}" '"$INSTDIR\${ELECTRON_DIR_REL}"' "$INSTDIR\${APP_EXE}" 0
 no_desktop:
 
   WriteRegStr HKCR "${PROTOCOL}" "" "URL:Spotti Voice OAuth"

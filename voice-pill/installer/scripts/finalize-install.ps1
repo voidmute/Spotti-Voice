@@ -11,11 +11,13 @@ $ErrorActionPreference = "Stop"
 
 $AppExeRel = "electron\node_modules\electron\dist\Spotti Voice.exe"
 $LaunchUiRel = "launch-ui.cmd"
+$ElectronDirRel = "electron"
 $Protocol = "spotti-voice"
 
 $InstallDir = $InstallDir.Trim().TrimEnd('\')
 $AppExe = Join-Path $InstallDir $AppExeRel
 $LaunchUi = Join-Path $InstallDir $LaunchUiRel
+$ElectronDir = Join-Path $InstallDir $ElectronDirRel
 
 if (-not (Test-Path -LiteralPath $AppExe)) {
     throw "Main application missing after install: $AppExe"
@@ -147,12 +149,13 @@ Set-Content -LiteralPath $uninstallPs1 -Encoding UTF8 -Value $uninstallScript
 
 if ($wantStartMenu) {
     New-Item -ItemType Directory -Path $startMenuRoot -Force | Out-Null
-    New-Shortcut -LinkPath $appMenuLnk -TargetPath $LaunchUi -IconLocation "$AppExe,0"
+    # Direct EXE launch avoids cmd dependency and console flash on locked-down PCs.
+    New-Shortcut -LinkPath $appMenuLnk -TargetPath $AppExe -Arguments "`"$ElectronDir`"" -IconLocation "$AppExe,0"
     New-Shortcut -LinkPath $uninstallLnk -TargetPath $uninstallCmd -IconLocation "$AppExe,0"
 }
 
 if ($wantDesktop) {
-    New-Shortcut -LinkPath $desktopLnk -TargetPath $LaunchUi -IconLocation "$AppExe,0"
+    New-Shortcut -LinkPath $desktopLnk -TargetPath $AppExe -Arguments "`"$ElectronDir`"" -IconLocation "$AppExe,0"
 }
 
 New-Item -Path $ProtocolRoot -Force | Out-Null
