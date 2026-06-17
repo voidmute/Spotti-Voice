@@ -105,6 +105,11 @@ if not exist "installer\staging\setup-ui\runtime\electron.exe" (
   exit /b 1
 )
 
+echo [SPOTTI] Trimming Electron locales (setup runtime)...
+for %%F in ("installer\staging\setup-ui\runtime\locales\*.pak") do (
+  if /I not "%%~nxF"=="en-US.pak" if /I not "%%~nxF"=="ru.pak" del "%%F" 2>nul
+)
+
 echo [SPOTTI] Branding setup wizard shell...
 node "scripts\brand-electron-shell.mjs" "installer\staging\setup-ui\runtime\electron.exe" "installer\staging\setup-ui\runtime\Spotti Voice Setup.exe" "Spotti Voice Setup" "Spotti Voice Setup.exe"
 if errorlevel 1 exit /b 1

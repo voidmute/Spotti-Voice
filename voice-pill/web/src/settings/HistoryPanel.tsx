@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
-import { Check, ClipboardCopy, Loader2, Pencil, Trash2, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Check, ChevronLeft, ChevronRight, ClipboardCopy, Loader2, Pencil, Trash2, X } from "lucide-react";
 import {
   deleteHistoryEntry,
   fetchHistory,
@@ -12,6 +12,8 @@ type HistoryPanelProps = {
   base: string;
   engineOnline: boolean;
 };
+
+const PAGE_SIZE = 4;
 
 function formatWhen(iso: string) {
   try {
@@ -104,7 +106,8 @@ function HistoryRow({
             <button
               type="button"
               className="history-icon-btn history-icon-btn--ok"
-              aria-label="Сохранить"
+              tabIndex={-1}
+            aria-label="Сохранить"
               disabled={busy}
               onClick={() => void saveEdit()}
             >
@@ -164,6 +167,17 @@ export function HistoryPanel({ base, engineOnline }: HistoryPanelProps) {
   const [entries, setEntries] = useState<TranscriptEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [page, setPage] = useState(0);
+
+  const pageCount = Math.max(1, Math.ceil(entries.length / PAGE_SIZE));
+  const pageItems = useMemo(() => {
+    const start = page * PAGE_SIZE;
+    return entries.slice(start, start + PAGE_SIZE);
+  }, [entries, page]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [entries.length]);
 
   const reload = useCallback(async () => {
     if (!engineOnline) return;
@@ -235,15 +249,44 @@ export function HistoryPanel({ base, engineOnline }: HistoryPanelProps) {
   }
 
   return (
-    <ul className="history-list" aria-label="История распознанной речи">
-      {entries.map((entry) => (
-        <HistoryRow
-          key={entry.id}
-          entry={entry}
-          onUpdate={handleUpdate}
-          onDelete={handleDelete}
-        />
-      ))}
-    </ul>
+    <div className="history-shell">
+      <ul className="history-list history-list--compact" aria-label="История распознанной речи">
+        {pageItems.map((entry) => (
+          <HistoryRow
+            key={entry.id}
+            entry={entry}
+            onUpdate={handleUpdate}
+            onDelete={handleDelete}
+          />
+        ))}
+      </ul>
+      {entries.length > PAGE_SIZE ? (
+        <div className="history-pager">
+          <button
+            type="button"
+            className="history-pager__btn"
+            tabIndex={-1}
+            disabled={page <= 0}
+            aria-label="Предыдущая страница"
+            onClick={() => setPage((p) => Math.max(0, p - 1))}
+          >
+            <ChevronLeft size={16} strokeWidth={2.25} />
+          </button>
+          <span className="history-pager__label">
+            {page + 1} / {pageCount}
+          </span>
+          <button
+            type="button"
+            className="history-pager__btn"
+            tabIndex={-1}
+            disabled={page >= pageCount - 1}
+            aria-label="Следующая страница"
+            onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+          >
+            <ChevronRight size={16} strokeWidth={2.25} />
+          </button>
+        </div>
+      ) : null}
+    </div>
   );
 }

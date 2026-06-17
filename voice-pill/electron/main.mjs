@@ -1180,8 +1180,8 @@ async function createOverlay(engineSettings = null) {
   });
 }
 
-const SETTINGS_CONTENT_WIDTH = 920;
-const SETTINGS_CONTENT_HEIGHT = 560;
+const SETTINGS_CONTENT_WIDTH = 980;
+const SETTINGS_CONTENT_HEIGHT = 600;
 const SETTINGS_MIN_CONTENT_HEIGHT = 480;
 
 /** Keep setup content un-clipped after monitor / DPI changes. */

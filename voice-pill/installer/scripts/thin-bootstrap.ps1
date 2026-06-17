@@ -53,24 +53,47 @@ function Download-FileRobust {
         New-Item -ItemType Directory -Path $parent -Force | Out-Null
     }
     $tmp = "$Dest.partial"
-    if (Test-Path -LiteralPath $tmp) { Remove-Item -LiteralPath $tmp -Force }
 
     $lastError = $null
     for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
         try {
-            Write-Log "download attempt $attempt/$MaxAttempts $Url"
+            $resumeAt = 0
+            if (Test-Path -LiteralPath $tmp) {
+                $resumeAt = (Get-Item -LiteralPath $tmp).Length
+            }
+
+            Write-Log "download attempt $attempt/$MaxAttempts $Url (resume=$resumeAt)"
             $request = [System.Net.HttpWebRequest]::Create($Url)
             $request.UserAgent = "SpottiVoice-Setup/1.0"
             $request.AllowAutoRedirect = $true
             $request.Timeout = 7200000
             $request.ReadWriteTimeout = 7200000
             $request.KeepAlive = $true
+            if ($resumeAt -gt 0) {
+                $request.AddRange($resumeAt)
+            }
             $response = $request.GetResponse()
             try {
+                $http = $response -as [System.Net.HttpWebResponse]
+                $status = if ($http) { [int]$http.StatusCode } else { 200 }
+
+                if ($resumeAt -gt 0 -and $status -ne 206) {
+                    Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue
+                    throw "range_not_supported"
+                }
+
                 $stream = $response.GetResponseStream()
-                $fileStream = [System.IO.File]::Create($tmp)
+                if ($resumeAt -gt 0 -and $status -eq 206) {
+                    $fileStream = [System.IO.File]::Open($tmp, [System.IO.FileMode]::OpenOrCreate, [System.IO.FileAccess]::Write)
+                    $fileStream.Seek($resumeAt, [System.IO.SeekOrigin]::Begin) | Out-Null
+                } else {
+                    if (Test-Path -LiteralPath $tmp) {
+                        Remove-Item -LiteralPath $tmp -Force
+                    }
+                    $fileStream = [System.IO.File]::Create($tmp)
+                }
                 try {
-                    $buffer = New-Object byte[] 262144
+                    $buffer = New-Object byte[] 1048576
                     $read = 0
                     while (($read = $stream.Read($buffer, 0, $buffer.Length)) -gt 0) {
                         $fileStream.Write($buffer, 0, $read)
@@ -98,8 +121,10 @@ function Download-FileRobust {
         } catch {
             $lastError = $_
             Write-Log "download failed attempt $attempt : $($_.Exception.Message)"
-            if (Test-Path -LiteralPath $tmp) {
-                Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue
+            if ($_.Exception.Message -match "checksum_mismatch|range_not_supported") {
+                if (Test-Path -LiteralPath $tmp) {
+                    Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue
+                }
             }
             if ($attempt -lt $MaxAttempts) {
                 Start-Sleep -Seconds ([Math]::Min(8, $attempt * 2))
@@ -219,7 +244,16 @@ try {
             Remove-Item -LiteralPath $setupUiDir -Recurse -Force
         }
         New-Item -ItemType Directory -Path $setupUiDir -Force | Out-Null
-        Expand-Archive -LiteralPath $runtimeZip -DestinationPath $setupUiDir -Force
+        $tar = Get-Command tar.exe -ErrorAction SilentlyContinue
+        if ($tar) {
+            Write-Log "extract via tar"
+            & tar.exe -xf $runtimeZip -C $setupUiDir
+            if ($LASTEXITCODE -ne 0) {
+                throw "extract_failed"
+            }
+        } else {
+            Expand-Archive -LiteralPath $runtimeZip -DestinationPath $setupUiDir -Force
+        }
         $mainMjs = Join-Path $setupUiDir "main.mjs"
         if (-not (Test-Path -LiteralPath $mainMjs)) {
             throw "setup_runtime_invalid"

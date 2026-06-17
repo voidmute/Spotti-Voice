@@ -24,7 +24,7 @@ DEFAULTS: dict[str, Any] = {
     "appendTrailingSpace": True,
     "listenActive": False,
     "inputDeviceIndex": None,
-    "settingsSection": "settings",
+    "settingsSection": "mic",
     "settingsWindow": {
         "open": False,
         "x": None,
@@ -48,12 +48,23 @@ def settings_path() -> Path:
     return _config_dir() / "settings.json"
 
 
+_SETTINGS_SECTIONS = frozenset(
+    {"mic", "hotkey", "inject", "cloud", "language", "local", "history"}
+)
+_LEGACY_SECTIONS = {
+    "settings": "mic",
+    "config": "mic",
+    "device": "mic",
+}
+
+
 def _normalize_settings_section(section: Any) -> str:
-    if section in ("settings", "history"):
-        return str(section)
-    if section in ("config", "device", "cloud", "local"):
-        return "settings"
-    return "settings"
+    raw = str(section or "").strip().lower()
+    if raw in _LEGACY_SECTIONS:
+        return _LEGACY_SECTIONS[raw]
+    if raw in _SETTINGS_SECTIONS:
+        return raw
+    return "mic"
 
 
 def _apply_stt_rules(settings: dict[str, Any]) -> dict[str, Any]:

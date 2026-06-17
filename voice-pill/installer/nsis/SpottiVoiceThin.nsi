@@ -11,7 +11,7 @@
 Name "${APP_NAME}"
 OutFile "..\..\dist-setup\SpottiVoice-Setup.exe"
 SetCompressor /SOLID lzma
-RequestExecutionLevel user
+RequestExecutionLevel admin
 ShowInstDetails hide
 SilentInstall silent
 Icon "..\..\assets\app-icon.ico"

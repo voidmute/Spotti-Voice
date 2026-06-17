@@ -10,7 +10,31 @@ export async function resolveEngineBase(): Promise<string> {
   return "http://127.0.0.1:9777";
 }
 
-export type SettingsSection = "settings" | "history";
+export type SettingsSection =
+  | "mic"
+  | "hotkey"
+  | "inject"
+  | "cloud"
+  | "language"
+  | "local"
+  | "history";
+
+const SETTINGS_SECTIONS = new Set<SettingsSection>([
+  "mic",
+  "hotkey",
+  "inject",
+  "cloud",
+  "language",
+  "local",
+  "history",
+]);
+
+export function normalizeSettingsSection(value: unknown): SettingsSection {
+  const raw = String(value ?? "").trim().toLowerCase();
+  if (raw === "settings" || raw === "device" || raw === "config") return "mic";
+  if (SETTINGS_SECTIONS.has(raw as SettingsSection)) return raw as SettingsSection;
+  return "mic";
+}
 
 export type TranscriptEntry = {
   id: string;
@@ -46,8 +70,7 @@ export async function fetchSettings(base: string): Promise<VoiceSettings> {
     inputDeviceIndex?: number | null;
     settingsSection?: string;
   };
-  const section: SettingsSection =
-    data.settingsSection === "history" ? "history" : "settings";
+  const section = normalizeSettingsSection(data.settingsSection);
   return {
     ...data,
     settingsSection: section,

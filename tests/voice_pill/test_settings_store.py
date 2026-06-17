@@ -97,10 +97,13 @@ def test_settings_section_migrates_legacy(tmp_path, monkeypatch):
     monkeypatch.setenv("APPDATA", str(tmp_path))
     save_settings({"settingsSection": "device"})
     s = load_settings()
-    assert s["settingsSection"] == "settings"
-    save_settings({"settingsSection": "cloud"})
+    assert s["settingsSection"] == "mic"
+    save_settings({"settingsSection": "settings"})
     s = load_settings()
-    assert s["settingsSection"] == "settings"
+    assert s["settingsSection"] == "mic"
+    save_settings({"settingsSection": "hotkey"})
+    s = load_settings()
+    assert s["settingsSection"] == "hotkey"
 
 
 def test_settings_window_merge(tmp_path, monkeypatch):

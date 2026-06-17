@@ -92,6 +92,7 @@ export function ModeSwitch({ value, onChange, disabled }: ModeSwitchProps) {
             className={`mode-switch__seg${active ? " is-active" : ""}${preview ? " is-preview" : ""}`}
             aria-pressed={active}
             disabled={disabled}
+            tabIndex={-1}
             onMouseEnter={() => !dragging && setHover(seg.id)}
             onMouseLeave={() => !dragging && setHover(null)}
             onClick={() => onSegmentClick(seg.id)}

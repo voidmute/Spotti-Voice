@@ -12,6 +12,7 @@ export function SettingsTitleBar({ modeSwitch }: SettingsTitleBarProps) {
         <img className="settings-titlebar__logo" src="./white-only.png" alt="" />
         <div className="settings-titlebar__titles">
           <span className="settings-titlebar__name">Spotti Voice</span>
+          <span className="settings-titlebar__subtitle">Настройки</span>
         </div>
       </div>
 
@@ -22,6 +23,7 @@ export function SettingsTitleBar({ modeSwitch }: SettingsTitleBarProps) {
           type="button"
           className="settings-win-btn"
           aria-label="Свернуть"
+          tabIndex={-1}
           onClick={() => void window.spottiVoice?.minimizeWindow?.()}
         >
           <Minus size={18} strokeWidth={2.25} />
@@ -30,6 +32,7 @@ export function SettingsTitleBar({ modeSwitch }: SettingsTitleBarProps) {
           type="button"
           className="settings-win-btn settings-win-btn--close"
           aria-label="Закрыть"
+          tabIndex={-1}
           onClick={() => void window.spottiVoice?.closeWindow?.()}
         >
           <X size={18} strokeWidth={2.25} />
