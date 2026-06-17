@@ -1,6 +1,6 @@
 # Spotti Voice — release checklist
 
-[![CI](https://img.shields.io/github/actions/workflow/status/voidmute/Spotti-Voice/ci.yml?branch=main&label=CI)](https://github.com/voidmute/Spotti-Voice/actions/workflows/ci.yml)
+[![CI](https://github.com/voidmute/Spotti-Voice/actions/workflows/ci.yml/badge.svg)](https://github.com/voidmute/Spotti-Voice/actions/workflows/ci.yml)
 
 ## Build
 
@@ -10,7 +10,7 @@ build-exe.bat
 build-setup.bat
 ```
 
-Artifact: `voice-pill/dist-setup/SpottiVoice-Setup.exe`
+Artifact: `voice-pill/dist-setup/SpottiVoice-Setup.exe` (single self-contained NSIS installer)
 
 Compute SHA256:
 
@@ -18,15 +18,19 @@ Compute SHA256:
 Get-FileHash "voice-pill\dist-setup\SpottiVoice-Setup.exe" -Algorithm SHA256
 ```
 
+Also written to `dist-setup/SpottiVoice-Setup.sha256` by `build-setup.bat`.
+
 ## GitHub Release (public `Spotti-Voice` repo)
 
 1. Export tree: `.\scripts\migrate\export-voice-public.ps1 -OutDir ..\Spotti-Voice`
-2. Attach `SpottiVoice-Setup.exe` + `SHA256SUMS.txt`
+2. Attach **`SpottiVoice-Setup.exe`** + **`SpottiVoice-Setup.sha256`**
 3. Tag matches `voice-pill/installer/VERSION`
+
+Users download one exe, double-click, wizard installs to Program Files.
 
 ## Manual smoke (fresh VM)
 
-- [ ] Install `SpottiVoice-Setup.exe` — wizard completes, shortcuts created
+- [ ] Run `SpottiVoice-Setup.exe` (single file) — wizard completes, shortcuts created
 - [ ] Pill overlay visible; settings open from tray
 - [ ] Local STT: download model → PTT → text injects to Notepad
 - [ ] Cloud: Settings → Discord sign-in → PTT → transcript (VPS logs user id, no key in client)

@@ -9,7 +9,7 @@ if /I "%~1"=="-SkipAppBuild" set "SKIP_APP=1"
 for /f "usebackq delims=" %%V in ("installer\VERSION") do set "APP_VERSION=%%V"
 if not defined APP_VERSION set "APP_VERSION=0.1.0.0"
 
-echo [SPOTTI] Building SpottiVoice-Setup.exe (x64 Electron portable) v%APP_VERSION%
+echo [SPOTTI] Building SpottiVoice-Setup.exe (x64 single-file NSIS) v%APP_VERSION%
 
 if "%SKIP_APP%"=="0" (
   echo [SPOTTI] Building application payload...
@@ -109,15 +109,20 @@ if errorlevel 1 (
 
 if not exist "dist-setup" mkdir "dist-setup"
 
-echo [SPOTTI] Building x64 SpottiVoice-Setup.exe (Electron portable)...
-powershell -NoProfile -ExecutionPolicy Bypass -File "installer\scripts\build-sfx-installer.ps1" -StagingDir "installer\staging" -OutFile "dist-setup\SpottiVoice-Setup.exe" -Version "%APP_VERSION%"
+echo [SPOTTI] Building x64 SpottiVoice-Setup.exe (single-file NSIS)...
+powershell -NoProfile -ExecutionPolicy Bypass -File "installer\scripts\build-nsis-installer.ps1" -StagingDir "installer\staging" -OutFile "dist-setup\SpottiVoice-Setup.exe" -Version "%APP_VERSION%"
 if errorlevel 1 (
-  echo [SPOTTI] build-sfx-installer.ps1 failed.
+  echo [SPOTTI] build-nsis-installer.ps1 failed.
   exit /b 1
 )
 
+echo [SPOTTI] Writing SHA256...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$h=(Get-FileHash -LiteralPath 'dist-setup\SpottiVoice-Setup.exe' -Algorithm SHA256).Hash.ToLower(); Set-Content -LiteralPath 'dist-setup\SpottiVoice-Setup.sha256' -Value \"$h  SpottiVoice-Setup.exe\" -Encoding ascii"
+if errorlevel 1 exit /b 1
+
 echo.
-echo [OK] dist-setup\SpottiVoice-Setup.exe
+echo [OK] dist-setup\SpottiVoice-Setup.exe ^(single file — ship this alone^)
+echo [OK] dist-setup\SpottiVoice-Setup.sha256
 exit /b 0
 
 :fail

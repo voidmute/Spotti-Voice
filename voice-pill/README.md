@@ -4,7 +4,7 @@
 
 **Windows desktop STT overlay** — monorepo developer docs. Public releases: [Spotti-Voice](https://github.com/voidmute/Spotti-Voice).
 
-[![CI](https://img.shields.io/github/actions/workflow/status/voidmute/Spotti/ci.yml?branch=main&label=CI)](https://github.com/voidmute/Spotti/actions/workflows/ci.yml)
+[![CI](https://github.com/voidmute/Spotti/actions/workflows/ci.yml/badge.svg)](https://github.com/voidmute/Spotti/actions/workflows/ci.yml)
 
 </div>
 
@@ -20,7 +20,7 @@
 | Installer (NSIS + setup wizard) | `installer/` |
 | Tests | `../tests/voice_pill/` |
 
-**Modes:** local Russian (`whisper.cpp`) or **cloud** (Spotti VPS + Discord sign-in, no user OpenAI key).
+**Modes:** local Russian (`whisper.cpp`) or **cloud** (Spotti Servers + Discord sign-in, no user OpenAI key).
 
 ## Requirements
 
@@ -47,9 +47,14 @@ Quit from tray (**Quit**) before restart — stale `electron.exe` causes cache l
 |--------|--------|
 | `build-engine.bat` | Branded `dist/Spotti Voice.exe` + engine exe |
 | `build-exe.bat` | Full portable payload |
-| `build-setup.bat` | `dist-setup/SpottiVoice-Setup.exe` |
+| `build-setup.bat` | `dist-setup/SpottiVoice-Setup.exe` (single-file NSIS) |
 
 Release checklist: [RELEASE.md](RELEASE.md)
+
+## Install (end users)
+
+1. Download **`SpottiVoice-Setup.exe`** from [Releases](https://github.com/voidmute/Spotti-Voice/releases).
+2. Run it — wizard installs Spotti Voice (no zip, no extra files).
 
 Export to public repo:
 

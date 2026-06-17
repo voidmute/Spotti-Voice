@@ -101,10 +101,33 @@ function pluginStateDir() {
   return __dirname;
 }
 
+const PORTABLE_RUNTIME_FILES = ["icudtl.dat", "resources.pak", "payload.zip", "main.mjs"];
+
+function assertPortableRuntime() {
+  const root = installRootDir();
+  const nsisBootstrap = Boolean(setupConfig?.payloadArchive);
+  const required = nsisBootstrap
+    ? ["icudtl.dat", "resources.pak"]
+    : PORTABLE_RUNTIME_FILES;
+  const missing = required.filter((name) => !fs.existsSync(path.join(root, name)));
+  if (missing.length === 0) return;
+
+  setupLog(`runtime incomplete: missing ${missing.join(", ")} (root=${root}, nsis=${nsisBootstrap})`);
+  const detail = missing.join(", ");
+  const hint = nsisBootstrap
+    ? "Скачайте SpottiVoice-Setup.exe заново с официального релиза и запустите его снова."
+    : "Скачайте полный архив SpottiVoice-Setup-*.zip из Releases, распакуйте и запустите SpottiVoice-Setup.exe из распакованной папки.";
+  dialog.showErrorBox(
+    "Spotti Voice — установка",
+    `Не удалось запустить установщик (не хватает: ${detail}).\n\n${hint}`,
+  );
+  app.exit(11);
+}
+
 function bootstrapErrorMessage(code) {
   switch (String(code || "").trim()) {
     case "11":
-      return "Установщик повреждён. Скачайте Spotti Voice заново с официального сайта.";
+      return "Установщик повреждён. Скачайте SpottiVoice-Setup.exe заново с официального релиза.";
     case "12":
       return "Не удалось открыть окно установки. Скачайте установщик снова или добавьте его в исключения антивируса.";
     default:
@@ -691,6 +714,8 @@ ipcMain.handle("setup:window-close", (event) => {
   app.quit(installFinished ? 0 : 1);
   return true;
 });
+
+assertPortableRuntime();
 
 app.whenReady().then(() => {
   if (process.platform === "win32") {

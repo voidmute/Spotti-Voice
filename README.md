@@ -46,11 +46,10 @@ flowchart LR
 
 ## Установка (пользователи)
 
-1. Скачайте **`SpottiVoice-Setup.exe`** из [Releases](https://github.com/voidmute/Spotti-Voice/releases).
-2. Запустите установщик (Python/Node не нужны).
-3. Откройте **Spotti Voice** из меню Пуск.
-4. **Облако:** Настройки → Облако → **Войти через Discord**.
-5. **Локально:** Настройки → Локально → при первом запуске скачается модель.
+1. Скачайте **`SpottiVoice-Setup.exe`** из [Releases](https://github.com/voidmute/Spotti-Voice/releases) и запустите (один файл, Python/Node не нужны).
+2. Откройте **Spotti Voice** из меню Пуск.
+3. **Облако:** Настройки → Облако → **Войти через Discord**.
+4. **Локально:** Настройки → Локально → при первом запуске скачается модель.
 
 Горячая клавиша по умолчанию: **Ctrl+Shift+Space** (toggle PTT). Меню в трее → **Setup**.
 
@@ -64,7 +63,7 @@ build-exe.bat
 build-setup.bat
 ```
 
-Артефакт: `voice-pill\dist-setup\SpottiVoice-Setup.exe`
+Артефакт: `voice-pill\dist-setup\SpottiVoice-Setup.exe` (один файл NSIS)
 
 Разработка без установщика:
 

@@ -1,6 +1,5 @@
-; Spotti Voice — LEGACY NSIS engine (optional uninstall stub only).
-; Primary installer: voice-pill\build-setup.bat → x64 Electron portable (dist-setup\SpottiVoice-Setup.exe).
-; Build: voice-pill\build-setup.bat (requires NSIS 3.x makensis on PATH)
+; Spotti Voice — single-file NSIS installer (setup wizard + compressed payload).
+; Build: voice-pill\build-setup.bat → dist-setup\SpottiVoice-Setup.exe
 
 !include "LogicLib.nsh"
 
@@ -14,10 +13,13 @@
 !define UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\SpottiVoice"
 !define PROTOCOL "spotti-voice"
 
-!define APP_VERSION "0.1.0.0"
+!ifndef APP_VERSION
+  !define APP_VERSION "0.1.0.0"
+!endif
 
 Name "${APP_NAME}"
-OutFile "..\..\dist-setup\SpottiVoice-Setup.tmp.exe"
+OutFile "..\..\dist-setup\SpottiVoice-Setup.exe"
+SetCompressor /SOLID lzma
 InstallDir "$PROGRAMFILES64\Spotti Voice"
 RequestExecutionLevel admin
 ShowInstDetails hide
