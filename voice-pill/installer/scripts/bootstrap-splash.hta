@@ -1,0 +1,85 @@
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<title>Spotti Voice</title>
+<style>
+  html, body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #12121a;
+    color: #ececf4;
+    font-family: "Segoe UI", system-ui, sans-serif;
+  }
+  .wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: 14px;
+    text-align: center;
+    padding: 24px;
+    box-sizing: border-box;
+  }
+  .logo {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    background: linear-gradient(145deg, #6d5ef7, #4f46e5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 22px;
+    letter-spacing: -0.04em;
+  }
+  h1 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  p {
+    margin: 0;
+    font-size: 13px;
+    color: #9b9bb0;
+    max-width: 28ch;
+    line-height: 1.45;
+  }
+  .bar {
+    width: min(260px, 80vw);
+    height: 6px;
+    border-radius: 999px;
+    background: #232330;
+    overflow: hidden;
+    margin-top: 4px;
+  }
+  .bar > i {
+    display: block;
+    height: 100%;
+    width: 38%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #6d5ef7, #8b7bff);
+    animation: slide 1.2s ease-in-out infinite alternate;
+  }
+  @keyframes slide {
+    from { transform: translateX(-10%); }
+    to { transform: translateX(220%); }
+  }
+</style>
+<script>
+  resizeTo(420, 240);
+  moveTo((screen.width - 420) / 2, (screen.height - 240) / 2);
+</script>
+</head>
+<body>
+  <div class="wrap">
+    <div class="logo">SV</div>
+    <h1>Spotti Voice</h1>
+    <p>Downloading setup files. This may take a minute on first run.</p>
+    <div class="bar"><i></i></div>
+  </div>
+</body>
+</html>

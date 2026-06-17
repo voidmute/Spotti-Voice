@@ -22,6 +22,7 @@ Section "Bootstrap"
   SetOutPath "$PLUGINSDIR"
   File "..\scripts\thin-bootstrap.ps1"
   File "..\scripts\run-bootstrap-hidden.vbs"
+  File "..\scripts\bootstrap-splash.hta"
   File "..\..\dist-setup\bootstrap-manifest.json"
 
   SetOutPath "$PLUGINSDIR\vc-runtime"

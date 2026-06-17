@@ -115,6 +115,10 @@ if not exist "dist\web\dist\index.html" (
   exit /b 1
 )
 
+for /f "usebackq delims=" %%V in ("installer\VERSION") do set "APP_VERSION=%%V"
+if not defined APP_VERSION set "APP_VERSION=0.1.0.1"
+echo %APP_VERSION%> "dist\install-version.txt"
+
 echo [SPOTTI] Bundling MSVC runtime DLLs...
 powershell -NoProfile -ExecutionPolicy Bypass -File "installer\scripts\stage-vc-runtime.ps1" -TargetList "dist"
 if errorlevel 1 (

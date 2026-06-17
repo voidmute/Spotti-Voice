@@ -626,7 +626,19 @@ function overlayUrl() {
 }
 
 function settingsUrl() {
-  return distPage("index.html") ?? "http://127.0.0.1:5174/";
+  const href = distPage("index.html");
+  if (!href) return "http://127.0.0.1:5174/";
+  let bust = "";
+  try {
+    const versionFile = path.join(ROOT, "install-version.txt");
+    if (fs.existsSync(versionFile)) {
+      const v = fs.readFileSync(versionFile, "utf8").trim();
+      if (v) bust = `?v=${encodeURIComponent(v)}`;
+    }
+  } catch {
+    /* ignore */
+  }
+  return `${href}${bust}`;
 }
 
 function attachLoadDiagnostics(win, label) {
@@ -1245,6 +1257,7 @@ async function createSettings(engineSettings = null) {
       settingsWindow.setIcon(icons.window);
     }
     ensureSettingsWindowLayout(settingsWindow);
+    void settingsWindow.webContents.session.clearCache();
     settingsWindow.show();
     scheduleSettingsWindowSave(true);
   });

@@ -169,6 +169,75 @@ function Copy-VcRuntime {
     }
 }
 
+function Write-RuntimeStamp {
+    param([string]$SetupUiDir, [string]$Sha256)
+    $stampPath = Join-Path $SetupUiDir ".runtime-sha256"
+    Set-Content -LiteralPath $stampPath -Value $Sha256.ToLower() -Encoding ASCII -NoNewline
+}
+
+function Test-RuntimeCacheValid {
+    param(
+        [string]$SetupUiDir,
+        [string]$ExpectedSha256,
+        [string]$SetupExe,
+        [string]$FallbackExe
+    )
+    if (-not (Test-Path -LiteralPath $SetupExe) -and -not (Test-Path -LiteralPath $FallbackExe)) {
+        return $false
+    }
+    $mainMjs = Join-Path $SetupUiDir "main.mjs"
+    $wizardUi = Join-Path $SetupUiDir "web\dist\index.html"
+    if (-not (Test-Path -LiteralPath $mainMjs)) { return $false }
+    if (-not (Test-Path -LiteralPath $wizardUi)) { return $false }
+
+    $stampPath = Join-Path $SetupUiDir ".runtime-sha256"
+    if (-not (Test-Path -LiteralPath $stampPath)) { return $false }
+    $stamp = (Get-Content -LiteralPath $stampPath -Raw).Trim().ToLower()
+    return $stamp -eq $ExpectedSha256.ToLower()
+}
+
+function Show-BootstrapSplash {
+    param([string]$PluginDir)
+    $hta = Join-Path $PluginDir "bootstrap-splash.hta"
+    if (-not (Test-Path -LiteralPath $hta)) { return $null }
+    try {
+        return Start-Process -FilePath "mshta.exe" -ArgumentList "`"$hta`"" -PassThru
+    } catch {
+        return $null
+    }
+}
+
+function Hide-BootstrapSplash {
+    param($SplashProc)
+    if (-not $SplashProc) { return }
+    try {
+        if (-not $SplashProc.HasExited) {
+            Stop-Process -Id $SplashProc.Id -Force -ErrorAction SilentlyContinue
+        }
+    } catch {
+        Get-Process mshta -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    }
+}
+
+function Extract-SetupRuntime {
+    param([string]$RuntimeZip, [string]$SetupUiDir)
+    if (Test-Path -LiteralPath $SetupUiDir) {
+        Remove-Item -LiteralPath $SetupUiDir -Recurse -Force
+    }
+    New-Item -ItemType Directory -Path $SetupUiDir -Force | Out-Null
+    $tar = Get-Command tar.exe -ErrorAction SilentlyContinue
+    if ($tar) {
+        & tar.exe -xf $RuntimeZip -C $SetupUiDir
+        if ($LASTEXITCODE -ne 0) { throw "extract_failed" }
+    } else {
+        Expand-Archive -LiteralPath $RuntimeZip -DestinationPath $SetupUiDir -Force
+    }
+    $mainMjs = Join-Path $SetupUiDir "main.mjs"
+    if (-not (Test-Path -LiteralPath $mainMjs)) {
+        throw "setup_runtime_invalid"
+    }
+}
+
 function Write-SetupConfig {
     param(
         [string]$SetupUiDir,
@@ -215,48 +284,33 @@ try {
 
     New-Item -ItemType Directory -Path $cacheRoot -Force | Out-Null
 
-    $needRuntime = -not (
-        (Test-Path -LiteralPath $setupExe) -or
-        (Test-Path -LiteralPath $fallbackExe)
-    )
-    if (-not $needRuntime) {
-        $mainMjs = Join-Path $setupUiDir "main.mjs"
-        if (-not (Test-Path -LiteralPath $mainMjs)) {
-            $needRuntime = $true
-        }
-    }
-    if (-not $needRuntime -and (Test-Path -LiteralPath $runtimeZip)) {
-        $zipSha = Get-Sha256 $runtimeZip
-        if ($zipSha -ne [string]$manifest.setupRuntime.sha256) {
-            $needRuntime = $true
-        }
-    }
+    $expectedRuntimeSha = [string]$manifest.setupRuntime.sha256
+    $needRuntime = -not (Test-RuntimeCacheValid `
+        -SetupUiDir $setupUiDir `
+        -ExpectedSha256 $expectedRuntimeSha `
+        -SetupExe $setupExe `
+        -FallbackExe $fallbackExe)
 
+    $splash = $null
     if ($needRuntime) {
-        Write-Log "download setup-runtime"
-        Download-FileRobust `
-            -Url ([string]$manifest.setupRuntime.url) `
-            -Dest $runtimeZip `
-            -ExpectedSha256 ([string]$manifest.setupRuntime.sha256)
-
-        Write-Log "extract setup-runtime"
-        if (Test-Path -LiteralPath $setupUiDir) {
-            Remove-Item -LiteralPath $setupUiDir -Recurse -Force
-        }
-        New-Item -ItemType Directory -Path $setupUiDir -Force | Out-Null
-        $tar = Get-Command tar.exe -ErrorAction SilentlyContinue
-        if ($tar) {
-            Write-Log "extract via tar"
-            & tar.exe -xf $runtimeZip -C $setupUiDir
-            if ($LASTEXITCODE -ne 0) {
-                throw "extract_failed"
+        $splash = Show-BootstrapSplash -PluginDir $PluginDir
+        try {
+            $zipOk = $false
+            if (Test-Path -LiteralPath $runtimeZip) {
+                $zipOk = (Get-Sha256 $runtimeZip) -eq $expectedRuntimeSha.ToLower()
             }
-        } else {
-            Expand-Archive -LiteralPath $runtimeZip -DestinationPath $setupUiDir -Force
-        }
-        $mainMjs = Join-Path $setupUiDir "main.mjs"
-        if (-not (Test-Path -LiteralPath $mainMjs)) {
-            throw "setup_runtime_invalid"
+            if (-not $zipOk) {
+                Write-Log "download setup-runtime"
+                Download-FileRobust `
+                    -Url ([string]$manifest.setupRuntime.url) `
+                    -Dest $runtimeZip `
+                    -ExpectedSha256 $expectedRuntimeSha
+            }
+            Write-Log "extract setup-runtime"
+            Extract-SetupRuntime -RuntimeZip $runtimeZip -SetupUiDir $setupUiDir
+            Write-RuntimeStamp -SetupUiDir $setupUiDir -Sha256 $expectedRuntimeSha
+        } finally {
+            Hide-BootstrapSplash -SplashProc $splash
         }
     }
 
