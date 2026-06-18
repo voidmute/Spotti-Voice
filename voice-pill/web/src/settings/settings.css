@@ -1,25 +1,27 @@
-/* Spotti Voice setup — dark product shell, OKLCH, no scroll */
+/* Spotti Voice settings — FigJam light shell (spottibot.duckdns.org) */
 
 .settings-app {
-  --setup-bg: oklch(0.115 0.014 278);
-  --setup-bg-elevated: oklch(0.145 0.016 278);
-  --setup-surface: oklch(0.168 0.018 278);
-  --setup-surface-2: oklch(0.195 0.02 278);
-  --setup-surface-hover: oklch(0.22 0.022 278);
-  --setup-border: oklch(0.98 0.01 278 / 0.07);
-  --setup-border-strong: oklch(0.98 0.01 278 / 0.13);
-  --setup-text: oklch(0.94 0.008 278);
-  --setup-muted: oklch(0.68 0.02 278);
-  --setup-accent: oklch(0.64 0.19 278);
-  --setup-accent-soft: oklch(0.64 0.19 278 / 0.14);
-  --setup-accent-ring: oklch(0.64 0.19 278 / 0.45);
-  --setup-success: oklch(0.72 0.16 155);
-  --setup-error: oklch(0.65 0.2 25);
+  --setup-bg: #f4f2ee;
+  --setup-bg-elevated: #faf9f7;
+  --setup-surface: #fdfdfd;
+  --setup-surface-2: #f6f6f8;
+  --setup-surface-hover: #ececf0;
+  --setup-border: #e4e4ea;
+  --setup-border-strong: #cfcfd8;
+  --setup-text: #121218;
+  --setup-muted: #6b6b78;
+  --setup-accent: #5865f2;
+  --setup-accent-soft: rgb(88 101 242 / 0.12);
+  --setup-accent-ring: rgb(88 101 242 / 0.35);
+  --setup-success: #065f46;
+  --setup-error: #9f1239;
   --setup-titlebar-h: 52px;
   --setup-radius: 18px;
   --setup-radius-sm: 12px;
   --setup-radius-xs: 10px;
   --setup-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --setup-dot-color: rgb(163 163 163 / 0.55);
+  --setup-dot-size: 20px;
 
   /* Aliases used by cloud-auth panel (setup tokens). */
   --settings-border: var(--setup-border);
@@ -33,22 +35,27 @@
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
+  color-scheme: light;
   font-family:
+    Inter,
     "Segoe UI Variable Display",
     "Segoe UI Variable Text",
     -apple-system,
     BlinkMacSystemFont,
-    "SF Pro Display",
     system-ui,
     sans-serif;
   font-size: 16px;
   line-height: 1.45;
   letter-spacing: -0.01em;
   color: var(--setup-text);
-  background:
-    radial-gradient(ellipse 90% 60% at 8% -10%, oklch(0.58 0.2 278 / 0.16), transparent 58%),
-    radial-gradient(ellipse 70% 50% at 100% 100%, oklch(0.48 0.14 290 / 0.1), transparent 55%),
-    var(--setup-bg);
+  background-color: var(--setup-bg);
+  background-image: radial-gradient(
+    circle,
+    var(--setup-dot-color) 1.15px,
+    transparent 1.15px
+  );
+  background-size: var(--setup-dot-size) var(--setup-dot-size);
+  background-position: 0 0;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -57,10 +64,17 @@
   position: fixed;
   inset: 0;
   pointer-events: none;
-  opacity: 0.35;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
-  mix-blend-mode: overlay;
   z-index: 0;
+  opacity: 0.5;
+  background: radial-gradient(
+    ellipse 90% 70% at 50% 30%,
+    rgb(255 255 255 / 0.92),
+    transparent 72%
+  );
+}
+
+.settings-app::after {
+  content: none;
 }
 
 .settings-app *,
@@ -84,8 +98,8 @@
   height: var(--setup-titlebar-h);
   padding: 0 8px 0 16px;
   border-bottom: 1px solid var(--setup-border);
-  background: oklch(0.13 0.014 278 / 0.88);
-  backdrop-filter: blur(12px);
+  background: color-mix(in srgb, var(--setup-bg) 94%, white);
+  backdrop-filter: blur(10px);
   -webkit-app-region: drag;
   user-select: none;
 }
@@ -1356,16 +1370,12 @@ html:has(.settings-app) body::-webkit-scrollbar {
 }
 
 .settings-cloud-auth {
-  margin-bottom: 1.35rem;
-  padding: 1.15rem 1.2rem 1.2rem;
+  margin-bottom: 0;
+  padding: 1.35rem 1.4rem 1.45rem;
   border-radius: 16px;
-  border: 1px solid color-mix(in oklch, var(--settings-border) 72%, transparent);
-  background: linear-gradient(
-    155deg,
-    color-mix(in oklch, var(--settings-surface) 94%, var(--settings-accent) 6%) 0%,
-    color-mix(in oklch, var(--settings-surface) 88%, #5865f2 12%) 100%
-  );
-  box-shadow: 0 10px 28px color-mix(in oklch, #000 22%, transparent);
+  border: 1px solid var(--setup-border);
+  background: var(--setup-surface);
+  box-shadow: 0 1px 2px rgb(18 18 24 / 0.06), 0 8px 24px rgb(18 18 24 / 0.04);
 }
 
 .settings-cloud-auth__head {
@@ -1400,7 +1410,7 @@ html:has(.settings-app) body::-webkit-scrollbar {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  color: color-mix(in oklch, #3d9a6a 75%, var(--settings-text) 25%);
+  color: var(--setup-success);
 }
 
 .settings-cloud-auth__actions {
@@ -1482,9 +1492,9 @@ html:has(.settings-app) body::-webkit-scrollbar {
   border-radius: 10px;
   font-size: 0.84rem;
   line-height: 1.45;
-  color: #ffb4b4;
-  background: color-mix(in oklch, #c44 14%, transparent);
-  border: 1px solid color-mix(in oklch, #c44 35%, transparent);
+  color: var(--setup-error);
+  background: #fff1f2;
+  border: 1px solid #f5a8b0;
 }
 
 .settings-cloud-auth__alert svg {
@@ -1495,14 +1505,12 @@ html:has(.settings-app) body::-webkit-scrollbar {
 /* ── v2 redesign: fixed layout, left nav tabs, no scroll ── */
 
 .settings-app--v2 {
-  --setup-bg: oklch(0.1 0.016 282);
-  --setup-accent: oklch(0.68 0.21 282);
-  --setup-accent-soft: oklch(0.68 0.21 282 / 0.12);
   --setup-sidebar-w: 196px;
-  background:
-    radial-gradient(ellipse 80% 55% at 0% -5%, oklch(0.55 0.22 282 / 0.2), transparent 55%),
-    radial-gradient(ellipse 60% 45% at 100% 110%, oklch(0.45 0.16 295 / 0.12), transparent 50%),
-    var(--setup-bg);
+}
+
+.settings-app--figjam.settings-app--v2 {
+  --setup-accent: #5865f2;
+  --setup-accent-soft: rgb(88 101 242 / 0.1);
 }
 
 .settings-app--v2 .settings-body {
@@ -1511,8 +1519,8 @@ html:has(.settings-app) body::-webkit-scrollbar {
 
 .settings-app--v2 .settings-sidebar {
   padding: 12px 8px;
-  background: oklch(0.11 0.015 282 / 0.96);
-  border-right: 1px solid oklch(0.98 0.01 282 / 0.06);
+  background: color-mix(in srgb, var(--setup-bg) 92%, white);
+  border-right: 1px solid var(--setup-border);
 }
 
 .settings-nav {
@@ -1532,7 +1540,7 @@ html:has(.settings-app) body::-webkit-scrollbar {
   border: 1px solid transparent;
   border-radius: 12px;
   background: transparent;
-  color: oklch(0.66 0.02 282);
+  color: var(--setup-muted);
   font-size: 13px;
   font-weight: 650;
   text-align: left;
@@ -1545,17 +1553,15 @@ html:has(.settings-app) body::-webkit-scrollbar {
 
 .settings-nav__item:hover {
   color: var(--setup-text);
-  background: oklch(0.17 0.018 282);
-  border-color: oklch(0.98 0.01 282 / 0.06);
+  background: var(--setup-surface-hover);
+  border-color: var(--setup-border);
 }
 
 .settings-nav__item.is-active {
   color: var(--setup-text);
-  border-color: oklch(0.68 0.21 282 / 0.35);
-  background:
-    linear-gradient(135deg, oklch(0.68 0.21 282 / 0.18), oklch(0.68 0.21 282 / 0.06)),
-    oklch(0.16 0.017 282);
-  box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.05);
+  border-color: rgb(88 101 242 / 0.28);
+  background: linear-gradient(135deg, rgb(88 101 242 / 0.1), rgb(88 101 242 / 0.04));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.7);
 }
 
 .settings-nav__icon {
@@ -1564,12 +1570,12 @@ html:has(.settings-app) body::-webkit-scrollbar {
   width: 28px;
   height: 28px;
   border-radius: 8px;
-  background: oklch(0.14 0.015 282);
+  background: var(--setup-surface-2);
 }
 
 .settings-nav__item.is-active .settings-nav__icon {
-  color: oklch(0.88 0.12 285);
-  background: oklch(0.68 0.21 282 / 0.22);
+  color: var(--setup-accent);
+  background: var(--setup-accent-soft);
 }
 
 .settings-app--v2 .settings-main {
@@ -1584,12 +1590,9 @@ html:has(.settings-app) body::-webkit-scrollbar {
   min-height: 0;
   overflow: hidden;
   border-radius: 20px;
-  border: 1px solid oklch(0.98 0.01 282 / 0.08);
-  background:
-    linear-gradient(160deg, oklch(0.17 0.02 282 / 0.95), oklch(0.13 0.016 282 / 0.98));
-  box-shadow:
-    inset 0 1px 0 oklch(1 0 0 / 0.04),
-    0 20px 48px oklch(0.05 0.02 282 / 0.45);
+  border: 1px solid var(--setup-border);
+  background: var(--setup-surface);
+  box-shadow: 0 1px 2px rgb(18 18 24 / 0.06), 0 12px 32px rgb(18 18 24 / 0.05);
 }
 
 .settings-panel-view {
@@ -1620,9 +1623,9 @@ html:has(.settings-app) body::-webkit-scrollbar {
   width: 44px;
   height: 44px;
   border-radius: 14px;
-  color: oklch(0.9 0.1 285);
-  background: linear-gradient(145deg, oklch(0.68 0.21 282 / 0.35), oklch(0.52 0.18 290 / 0.2));
-  border: 1px solid oklch(0.68 0.21 282 / 0.35);
+  color: var(--setup-accent);
+  background: var(--setup-accent-soft);
+  border: 1px solid rgb(88 101 242 / 0.22);
 }
 
 .settings-panel-view__head h2 {
@@ -1648,8 +1651,8 @@ html:has(.settings-app) body::-webkit-scrollbar {
   min-height: 0;
   padding: 18px;
   border-radius: 16px;
-  border: 1px solid oklch(0.98 0.01 282 / 0.07);
-  background: oklch(0.14 0.015 282 / 0.72);
+  border: 1px solid var(--setup-border);
+  background: var(--setup-bg-elevated);
 }
 
 .settings-card--center {

@@ -332,12 +332,14 @@ async def cloud_status() -> dict[str, Any]:
     )
 
     creds = cloud_session()
-    if creds and creds.get("refresh_token"):
+    signed_in = bool(creds and creds.get("refresh_token"))
+    if signed_in:
         await warm_cloud_session()
 
+    still = cloud_session()
     return {
         "ready": cloud_stt_ready(),
-        "signedIn": bool(cloud_session()),
+        "signedIn": bool(still and still.get("refresh_token")),
         "userLabel": cloud_user_label(),
     }
 

@@ -387,7 +387,7 @@ export function SettingsApp() {
   }
 
   return (
-    <div className="settings-app settings-app--v2">
+    <div className="settings-app settings-app--v2 settings-app--figjam">
       <SettingsTitleBar
         modeSwitch={
           settings ? (

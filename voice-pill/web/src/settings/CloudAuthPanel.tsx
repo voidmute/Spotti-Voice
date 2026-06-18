@@ -21,7 +21,9 @@ function cloudAuthErrorMessage(code: string): string {
     case "begin_failed":
       return "Не удалось открыть страницу Discord. Повторите позже.";
     case "oauth_timeout":
-      return "Время ожидания входа истекло. Закройте вкладку Discord и попробуйте снова.";
+      return "Время ожидания входа истекло. Попробуйте снова.";
+    case "oauth_cancelled":
+      return "Вход отменён. Нажмите «Войти через Discord» ещё раз.";
     case "oauth_finish_failed":
       return "Discord вернул код, но сессию сохранить не удалось. Повторите вход.";
     case "oauth_listener_failed":
@@ -157,8 +159,8 @@ export function CloudAuthPanel({ base }: { base: string }) {
           </p>
         ) : (
           <p className="settings-cloud-auth__meta">
-            Войдите через Discord — API-ключ не нужен. После входа откроется браузер для
-            подтверждения.
+            Войдите через Discord — API-ключ не нужен. Окно входа откроется внутри
+            Spotti Voice.
           </p>
         )}
       </div>
@@ -193,7 +195,7 @@ export function CloudAuthPanel({ base }: { base: string }) {
 
       {awaitingBrowser && !signedIn && !error ? (
         <p className="settings-cloud-auth__hint" role="status">
-          Завершите вход в браузере. Окно настроек обновится автоматически.
+          Завершите вход в окне Spotti Voice. Настройки обновятся автоматически.
         </p>
       ) : null}
 

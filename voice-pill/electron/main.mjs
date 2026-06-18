@@ -7,7 +7,6 @@ import {
   globalShortcut,
   screen,
   dialog,
-  shell,
 } from "electron";
 import http from "node:http";
 import { spawn } from "node:child_process";
@@ -151,18 +150,116 @@ async function warmCloudSession() {
   }
 }
 
-async function startCloudSignIn() {
-  let callbackPromise;
+function isOAuthCallbackUrl(url) {
+  if (!url || typeof url !== "string") return false;
   try {
-    callbackPromise = startOAuthCallbackServer();
-  } catch (err) {
-    console.error("oauth listener failed", err);
-    return { ok: false, error: "oauth_listener_failed" };
+    const parsed = new URL(url);
+    if (parsed.protocol === "spotti-voice:" && parsed.hostname === "auth") return true;
+    if (
+      (parsed.hostname === "127.0.0.1" || parsed.hostname === "localhost") &&
+      parsed.port === "9780" &&
+      parsed.pathname === "/auth/callback"
+    ) {
+      return true;
+    }
+  } catch {
+    return false;
   }
+  return false;
+}
+
+/** @type {BrowserWindow | null} */
+let oauthLoginWindow = null;
+
+function closeOAuthLoginWindow() {
+  if (!oauthLoginWindow || oauthLoginWindow.isDestroyed()) {
+    oauthLoginWindow = null;
+    return;
+  }
+  oauthLoginWindow.close();
+  oauthLoginWindow = null;
+}
+
+/**
+ * Discord OAuth inside the app (not system browser).
+ * Intercepts loopback / custom-scheme redirect and returns callback URL.
+ */
+function openOAuthLoginWindow(authorizeUrl, parentWin) {
+  closeOAuthLoginWindow();
+  return new Promise((resolve, reject) => {
+    const parent =
+      parentWin && !parentWin.isDestroyed()
+        ? parentWin
+        : settingsWindow && !settingsWindow.isDestroyed()
+          ? settingsWindow
+          : null;
+
+    const win = new BrowserWindow({
+      width: 500,
+      height: 760,
+      parent: parent ?? undefined,
+      modal: Boolean(parent),
+      show: false,
+      autoHideMenuBar: true,
+      title: "Вход через Discord — Spotti",
+      backgroundColor: "#f4f2ee",
+      icon: getAppIcons().window,
+      webPreferences: {
+        contextIsolation: true,
+        nodeIntegration: false,
+      },
+    });
+    oauthLoginWindow = win;
+
+    let settled = false;
+    const finish = (callbackUrl) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      closeOAuthLoginWindow();
+      resolve(callbackUrl);
+    };
+    const fail = (err) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      closeOAuthLoginWindow();
+      reject(err);
+    };
+
+    const timer = setTimeout(() => fail(new Error("oauth_timeout")), 300000);
+
+    const onNavigate = (event, url) => {
+      if (!isOAuthCallbackUrl(url)) return;
+      event.preventDefault();
+      finish(url);
+    };
+
+    win.webContents.on("will-redirect", onNavigate);
+    win.webContents.on("will-navigate", onNavigate);
+
+    win.on("closed", () => {
+      oauthLoginWindow = null;
+      if (!settled) fail(new Error("oauth_cancelled"));
+    });
+
+    win.once("ready-to-show", () => {
+      if (!win.isDestroyed()) win.show();
+    });
+
+    win.loadURL(authorizeUrl).catch((err) => fail(err));
+  });
+}
+
+async function startCloudSignIn() {
   try {
+    const health = await waitForEngine(32);
+    if (!health) {
+      return { ok: false, error: "engine_offline" };
+    }
+
     const res = await fetch(`${ENGINE_BASE}/api/cloud/auth/begin`, { method: "POST" });
     if (!res.ok) {
-      stopOAuthCallbackServer();
       let detail = "begin_failed";
       try {
         const body = await res.json();
@@ -177,20 +274,26 @@ async function startCloudSignIn() {
     const data = await res.json();
     const url = data?.authorize_url;
     if (!url || typeof url !== "string") {
-      stopOAuthCallbackServer();
       return { ok: false, error: "oauth_start_failed" };
     }
-    await shell.openExternal(url);
-    const callbackUrl = await callbackPromise;
+
+    const parent =
+      settingsWindow && !settingsWindow.isDestroyed() ? settingsWindow : null;
+    const callbackUrl = await openOAuthLoginWindow(url, parent);
     const finished = await finishOAuthCallback(callbackUrl);
     if (!finished) {
       return { ok: false, error: "oauth_finish_failed" };
     }
     return { ok: true };
   } catch (err) {
-    stopOAuthCallbackServer();
-    if (err instanceof Error && err.message === "oauth_timeout") {
-      return { ok: false, error: "oauth_timeout" };
+    closeOAuthLoginWindow();
+    if (err instanceof Error) {
+      if (err.message === "oauth_timeout") {
+        return { ok: false, error: "oauth_timeout" };
+      }
+      if (err.message === "oauth_cancelled") {
+        return { ok: false, error: "oauth_cancelled" };
+      }
     }
     console.error("cloud auth begin failed", err);
     return { ok: false, error: "engine_offline" };
@@ -1233,7 +1336,7 @@ async function createSettings(engineSettings = null) {
     minHeight: SETTINGS_MIN_CONTENT_HEIGHT,
     useContentSize: true,
     frame: false,
-    backgroundColor: "#14141a",
+    backgroundColor: "#f4f2ee",
     autoHideMenuBar: true,
     title: "Настройки Spotti Voice",
     icon: icons.window,

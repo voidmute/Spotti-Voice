@@ -23,6 +23,20 @@ _EXPIRY_SKEW_SEC = 60
 _REFRESH_LOCK = asyncio.Lock()
 _REFRESH_TRANSIENT_RETRIES = 2
 _REFRESH_TRANSIENT_BACKOFF_SEC = 0.75
+_BEGIN_TRANSIENT_RETRIES = 2
+_BEGIN_TRANSIENT_BACKOFF_SEC = 0.85
+
+
+def _http_client(**kwargs: Any) -> httpx.AsyncClient:
+    """TLS verify via certifi (PyInstaller bundles certifi in spec)."""
+    try:
+        import certifi
+
+        verify = certifi.where()
+    except ImportError:
+        verify = True
+    timeout = kwargs.pop("timeout", httpx.Timeout(45.0, connect=20.0))
+    return httpx.AsyncClient(timeout=timeout, verify=verify, **kwargs)
 
 _PENDING_VERIFIER: Optional[str] = None
 _PENDING_STATE: Optional[str] = None
@@ -92,7 +106,7 @@ async def _refresh_tokens(creds: dict[str, Any]) -> dict[str, Any]:
     last_error: Exception | None = None
     for attempt in range(_REFRESH_TRANSIENT_RETRIES + 1):
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
+            async with _http_client() as client:
                 resp = await client.post(
                     f"{api_base()}/api/voice-app/auth/refresh",
                     json={"refresh_token": refresh},
@@ -104,8 +118,7 @@ async def _refresh_tokens(creds: dict[str, Any]) -> dict[str, Any]:
             last_error = exc
             status = exc.response.status_code
             if status in (401, 403):
-                logger.info("Cloud refresh rejected (%s) — clearing session", status)
-                sign_out()
+                logger.info("Cloud refresh rejected (%s)", status)
                 raise RuntimeError("cloud_auth_expired") from exc
             if status >= 500 and attempt < _REFRESH_TRANSIENT_RETRIES:
                 await asyncio.sleep(_REFRESH_TRANSIENT_BACKOFF_SEC * (attempt + 1))
@@ -184,17 +197,28 @@ async def begin_oauth() -> dict[str, str]:
         "code_verifier": verifier,
         "redirect_uri": redirect,
     }
-    try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.get(f"{api_base()}/api/voice-app/auth/start", params=params)
-            resp.raise_for_status()
-            data = resp.json()
-    except httpx.HTTPStatusError as exc:
-        logger.warning("voice-app auth/start HTTP %s", exc.response.status_code)
-        raise RuntimeError("api_error") from exc
-    except httpx.RequestError as exc:
-        logger.warning("voice-app auth/start unreachable: %s", type(exc).__name__)
-        raise RuntimeError("api_unreachable") from exc
+    last_error: Exception | None = None
+    for attempt in range(_BEGIN_TRANSIENT_RETRIES + 1):
+        try:
+            async with _http_client() as client:
+                resp = await client.get(f"{api_base()}/api/voice-app/auth/start", params=params)
+                resp.raise_for_status()
+                data = resp.json()
+            break
+        except httpx.HTTPStatusError as exc:
+            logger.warning("voice-app auth/start HTTP %s", exc.response.status_code)
+            raise RuntimeError("api_error") from exc
+        except httpx.RequestError as exc:
+            last_error = exc
+            if attempt < _BEGIN_TRANSIENT_RETRIES:
+                await asyncio.sleep(_BEGIN_TRANSIENT_BACKOFF_SEC * (attempt + 1))
+                continue
+            logger.warning("voice-app auth/start unreachable: %s", type(exc).__name__)
+            raise RuntimeError("api_unreachable") from exc
+    else:
+        if last_error:
+            raise RuntimeError("api_unreachable") from last_error
+        raise RuntimeError("api_unreachable")
     _PENDING_STATE = str(data.get("state") or "")
     url = str(data.get("authorize_url") or "")
     if not url or not _PENDING_STATE:
@@ -210,7 +234,7 @@ async def complete_oauth(callback_url: str) -> dict[str, Any]:
     code, state = _parse_callback(callback_url)
     if _PENDING_STATE and state != _PENDING_STATE:
         raise RuntimeError("oauth_state_mismatch")
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with _http_client() as client:
         resp = await client.post(
             f"{api_base()}/api/voice-app/auth/token",
             json={
