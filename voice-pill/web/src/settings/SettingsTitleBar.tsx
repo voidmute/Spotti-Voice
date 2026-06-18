@@ -7,9 +7,10 @@ type SettingsTitleBarProps = {
 
 export function SettingsTitleBar({ modeSwitch }: SettingsTitleBarProps) {
   return (
-    <header className="settings-titlebar" data-tauri-drag-region>
+    <header className="settings-titlebar">
+      <div className="settings-titlebar__drag" aria-hidden />
       <div className="settings-titlebar__brand">
-        <img className="settings-titlebar__logo" src="./white-only.png" alt="" />
+        <img className="settings-titlebar__logo" src="./app-icon.png" alt="" />
         <div className="settings-titlebar__titles">
           <span className="settings-titlebar__name">Spotti Voice</span>
           <span className="settings-titlebar__subtitle">Настройки</span>

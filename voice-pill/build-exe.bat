@@ -115,6 +115,10 @@ if not exist "dist\web\dist\index.html" (
   exit /b 1
 )
 
+echo [SPOTTI] Copying whisper.cpp installer script...
+if not exist "dist\scripts" mkdir "dist\scripts" 2>nul
+copy /Y "scripts\fetch-whisper.ps1" "dist\scripts\fetch-whisper.ps1" >nul
+
 for /f "usebackq delims=" %%V in ("installer\VERSION") do set "APP_VERSION=%%V"
 if not defined APP_VERSION set "APP_VERSION=0.1.0.1"
 echo %APP_VERSION%> "dist\install-version.txt"

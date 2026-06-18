@@ -19,6 +19,7 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, "index.html"),
         overlay: resolve(__dirname, "overlay.html"),
+        uninstall: resolve(__dirname, "uninstall.html"),
       },
     },
   },

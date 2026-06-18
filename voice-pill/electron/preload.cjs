@@ -14,6 +14,7 @@ contextBridge.exposeInMainWorld("spottiVoice", {
   cloudSignIn: () => ipcRenderer.invoke("voice:cloud-sign-in"),
   cloudSignOut: () => ipcRenderer.invoke("voice:cloud-sign-out"),
   cloudStatus: () => ipcRenderer.invoke("voice:cloud-status"),
+  runUninstall: () => ipcRenderer.invoke("voice:run-uninstall"),
   onCloudAuthChanged: (handler) => {
     const listener = () => handler();
     ipcRenderer.on("voice:cloud-auth-changed", listener);

@@ -27,8 +27,10 @@ def sync_brand_png(source: Path, voice_pill_root: Path) -> None:
         voice_pill_root / "assets" / "app-icon.png",
         voice_pill_root / "web" / "public" / "white-only.png",
         voice_pill_root / "web" / "public" / "favicon.png",
+        voice_pill_root / "web" / "public" / "app-icon.png",
         voice_pill_root / "installer" / "web" / "public" / "white-only.png",
         voice_pill_root / "installer" / "web" / "public" / "favicon.png",
+        voice_pill_root / "installer" / "web" / "public" / "app-icon.png",
     ]
     for target in targets:
         target.parent.mkdir(parents=True, exist_ok=True)

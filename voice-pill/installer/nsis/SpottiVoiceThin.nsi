@@ -9,7 +9,10 @@
 !endif
 
 Name "${APP_NAME}"
-OutFile "..\..\dist-setup\SpottiVoice-Setup.exe"
+!ifndef OUTFILE_REL
+  !define OUTFILE_REL "..\..\dist-setup\SpottiVoice-Setup.exe"
+!endif
+OutFile "${OUTFILE_REL}"
 SetCompressor /SOLID lzma
 RequestExecutionLevel admin
 ShowInstDetails hide

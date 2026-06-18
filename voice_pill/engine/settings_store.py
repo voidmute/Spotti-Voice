@@ -55,6 +55,7 @@ _LEGACY_SECTIONS = {
     "settings": "mic",
     "config": "mic",
     "device": "mic",
+    "inject": "mic",
 }
 
 

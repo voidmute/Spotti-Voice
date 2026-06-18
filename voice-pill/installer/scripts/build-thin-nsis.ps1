@@ -34,11 +34,19 @@ if ($outDir -and -not (Test-Path -LiteralPath $outDir)) {
     New-Item -ItemType Directory -Path $outDir -Force | Out-Null
 }
 if (Test-Path -LiteralPath $OutFile) {
-    Remove-Item -LiteralPath $OutFile -Force
+    try {
+        Remove-Item -LiteralPath $OutFile -Force -ErrorAction Stop
+    } catch {
+        $fallback = Join-Path $outDir "SpottiVoice-Setup-$Version.exe"
+        Write-Warning "Cannot overwrite locked $OutFile; building $fallback"
+        $OutFile = $fallback
+    }
 }
 
+$outFileRel = "..\..\dist-setup\" + (Split-Path -Leaf $OutFile)
+
 Write-Host "[SPOTTI] Compiling thin NSIS installer..."
-& $makensis "/DAPP_VERSION=$Version" $nsisScript
+& $makensis "/DAPP_VERSION=$Version" "/DOUTFILE_REL=$outFileRel" $nsisScript
 if ($LASTEXITCODE -ne 0) {
     throw "makensis failed (exit $LASTEXITCODE)"
 }

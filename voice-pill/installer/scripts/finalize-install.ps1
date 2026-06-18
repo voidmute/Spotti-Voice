@@ -87,12 +87,18 @@ function New-Shortcut {
 }
 
 $uninstallScript = @'
-param()
+param([int]$AfterPid = 0)
 $ErrorActionPreference = "Stop"
 $AppName = "Spotti Voice"
 $Protocol = "spotti-voice"
 $InstallDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $InstallDir = $InstallDir.Trim().TrimEnd('\')
+
+if ($AfterPid -gt 0) {
+    while (Get-Process -Id $AfterPid -ErrorAction SilentlyContinue) {
+        Start-Sleep -Milliseconds 200
+    }
+}
 
 function Test-IsAdmin {
     $identity = [Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
@@ -143,7 +149,7 @@ Set-Content -LiteralPath $uninstallPs1 -Encoding UTF8 -Value $uninstallScript
 
 @(
     "@echo off",
-    "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"%~dp0Uninstall.ps1`"",
+    "call `"%~dp0launch-ui.cmd`" --uninstall",
     "exit /b %ERRORLEVEL%"
 ) | Set-Content -LiteralPath $uninstallCmd -Encoding ASCII
 
@@ -177,3 +183,11 @@ New-ItemProperty -LiteralPath $UninstKey -Name "NoModify" -Value 1 -PropertyType
 New-ItemProperty -LiteralPath $UninstKey -Name "NoRepair" -Value 1 -PropertyType DWord -Force | Out-Null
 
 Write-Host "[OK] Finalized install: $InstallDir (machineWide=$machineWide)"
+
+$whisperScript = Join-Path $InstallDir "scripts\fetch-whisper.ps1"
+if (Test-Path -LiteralPath $whisperScript) {
+    Write-Host "[OK] Installing whisper.cpp for local Russian STT..."
+    Start-Process -FilePath "powershell.exe" -ArgumentList @(
+        "-NoProfile", "-ExecutionPolicy", "Bypass", "-WindowStyle", "Hidden", "-File", $whisperScript
+    ) -WindowStyle Hidden | Out-Null
+}

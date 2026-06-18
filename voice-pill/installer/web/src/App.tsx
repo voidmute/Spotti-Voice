@@ -168,10 +168,11 @@ export default function App() {
   const stageClass = `setup-stage-content${!loading ? " is-visible" : ""}`;
 
   return (
-    <div className="setup-app">
+    <div className="setup-app settings-app--figjam">
       <header className="settings-titlebar">
+        <div className="settings-titlebar__drag" aria-hidden />
         <div className="settings-titlebar__brand">
-          <img className="settings-titlebar__logo" src="./white-only.png" alt="" />
+          <img className="settings-titlebar__logo" src="./app-icon.png" alt="" />
           <div className="settings-titlebar__titles">
             <span className="settings-titlebar__name">Spotti Voice</span>
             <span className="settings-titlebar__subtitle">Установка · v{version}</span>

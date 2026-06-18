@@ -1,47 +1,54 @@
-/* Spotti Voice installer — matches voice-pill/web settings shell */
+/* Spotti Voice installer — FigJam light shell (matches settings app) */
 
 .setup-app {
-  --setup-bg: oklch(0.115 0.014 278);
-  --setup-bg-elevated: oklch(0.145 0.016 278);
-  --setup-surface: oklch(0.168 0.018 278);
-  --setup-surface-2: oklch(0.195 0.02 278);
-  --setup-surface-hover: oklch(0.22 0.022 278);
-  --setup-border: oklch(0.98 0.01 278 / 0.07);
-  --setup-border-strong: oklch(0.98 0.01 278 / 0.13);
-  --setup-text: oklch(0.94 0.008 278);
-  --setup-muted: oklch(0.68 0.02 278);
-  --setup-accent: oklch(0.64 0.19 278);
-  --setup-accent-soft: oklch(0.64 0.19 278 / 0.14);
-  --setup-accent-ring: oklch(0.64 0.19 278 / 0.45);
-  --setup-success: oklch(0.72 0.16 155);
-  --setup-error: oklch(0.65 0.2 25);
+  --setup-bg: #f4f2ee;
+  --setup-bg-elevated: #faf9f7;
+  --setup-surface: #fdfdfd;
+  --setup-surface-2: #f6f6f8;
+  --setup-surface-hover: #ececf0;
+  --setup-border: #e4e4ea;
+  --setup-border-strong: #cfcfd8;
+  --setup-text: #121218;
+  --setup-muted: #6b6b78;
+  --setup-accent: #5865f2;
+  --setup-accent-soft: rgb(88 101 242 / 0.12);
+  --setup-accent-ring: rgb(88 101 242 / 0.35);
+  --setup-success: #065f46;
+  --setup-error: #9f1239;
   --setup-titlebar-h: 52px;
   --setup-radius: 18px;
   --setup-radius-sm: 12px;
   --setup-radius-xs: 10px;
   --setup-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --setup-dot-color: rgb(163 163 163 / 0.55);
+  --setup-dot-size: 20px;
 
   position: relative;
   display: flex;
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
+  color-scheme: light;
   font-family:
+    Inter,
     "Segoe UI Variable Display",
     "Segoe UI Variable Text",
     -apple-system,
     BlinkMacSystemFont,
-    "SF Pro Display",
     system-ui,
     sans-serif;
   font-size: 16px;
   line-height: 1.45;
   letter-spacing: -0.01em;
   color: var(--setup-text);
-  background:
-    radial-gradient(ellipse 90% 60% at 8% -10%, oklch(0.58 0.2 278 / 0.16), transparent 58%),
-    radial-gradient(ellipse 70% 50% at 100% 100%, oklch(0.48 0.14 290 / 0.1), transparent 55%),
-    var(--setup-bg);
+  background-color: var(--setup-bg);
+  background-image: radial-gradient(
+    circle,
+    var(--setup-dot-color) 1.15px,
+    transparent 1.15px
+  );
+  background-size: var(--setup-dot-size) var(--setup-dot-size);
+  background-position: 0 0;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -50,10 +57,13 @@
   position: fixed;
   inset: 0;
   pointer-events: none;
-  opacity: 0.35;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
-  mix-blend-mode: overlay;
   z-index: 0;
+  opacity: 0.5;
+  background: radial-gradient(
+    ellipse 90% 70% at 50% 30%,
+    rgb(255 255 255 / 0.92),
+    transparent 72%
+  );
 }
 
 .setup-app *,
@@ -77,24 +87,34 @@ body,
 /* Title bar */
 
 .settings-titlebar {
+  position: relative;
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
   height: var(--setup-titlebar-h);
   padding: 0 8px 0 16px;
   border-bottom: 1px solid var(--setup-border);
-  background: oklch(0.13 0.014 278 / 0.88);
-  backdrop-filter: blur(12px);
-  -webkit-app-region: drag;
+  background: color-mix(in srgb, var(--setup-bg) 94%, white);
+  backdrop-filter: blur(10px);
   user-select: none;
 }
 
+.settings-titlebar__drag {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  -webkit-app-region: drag;
+}
+
 .settings-titlebar__brand {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   gap: 11px;
   min-width: 0;
+  -webkit-app-region: drag;
 }
 
 .settings-titlebar__logo {
@@ -125,6 +145,8 @@ body,
 }
 
 .settings-titlebar__controls {
+  position: relative;
+  z-index: 1;
   display: flex;
   gap: 2px;
   -webkit-app-region: no-drag;
@@ -169,7 +191,7 @@ body,
   gap: 16px;
   padding: 18px 14px 14px;
   border-right: 1px solid var(--setup-border);
-  background: linear-gradient(180deg, oklch(0.14 0.015 278 / 0.95) 0%, oklch(0.12 0.013 278 / 0.98) 100%);
+  background: color-mix(in srgb, var(--setup-bg) 92%, white);
   overflow: hidden;
   min-height: 0;
 }
@@ -219,7 +241,7 @@ body,
   padding: 12px 12px 12px 10px;
   border: 1px solid var(--setup-border);
   border-radius: var(--setup-radius-sm);
-  background: oklch(0.16 0.016 278 / 0.6);
+  background: var(--setup-surface);
   color: var(--setup-muted);
   text-align: left;
   pointer-events: none;
@@ -232,18 +254,14 @@ body,
 
 .settings-tab.is-active {
   color: var(--setup-text);
-  border-color: var(--setup-accent-ring);
-  background:
-    linear-gradient(145deg, oklch(0.64 0.19 278 / 0.18), oklch(0.64 0.19 278 / 0.08)),
-    var(--setup-surface);
-  box-shadow:
-    inset 0 1px 0 oklch(1 0 0 / 0.06),
-    0 10px 24px oklch(0.08 0.02 278 / 0.45);
+  border-color: rgb(88 101 242 / 0.28);
+  background: linear-gradient(135deg, rgb(88 101 242 / 0.1), rgb(88 101 242 / 0.04));
+  box-shadow: 0 1px 2px rgb(18 18 24 / 0.06);
 }
 
 .settings-tab.is-done {
   color: var(--setup-text);
-  border-color: oklch(0.72 0.16 155 / 0.35);
+  border-color: rgb(6 95 70 / 0.25);
 }
 
 .settings-tab__icon {
@@ -311,10 +329,8 @@ body,
   padding: 18px 18px 16px;
   border-radius: var(--setup-radius);
   border: 1px solid var(--setup-border);
-  background: linear-gradient(165deg, oklch(0.19 0.02 278 / 0.92) 0%, oklch(0.155 0.016 278 / 0.98) 100%);
-  box-shadow:
-    inset 0 1px 0 oklch(1 0 0 / 0.05),
-    0 16px 40px oklch(0.06 0.02 278 / 0.55);
+  background: var(--setup-surface);
+  box-shadow: 0 1px 2px rgb(18 18 24 / 0.06), 0 12px 32px rgb(18 18 24 / 0.05);
   overflow: hidden;
 }
 
@@ -389,7 +405,7 @@ body,
   padding: 0 14px;
   border-radius: var(--setup-radius-xs);
   border: 1px solid var(--setup-border-strong);
-  background: oklch(0.14 0.015 278 / 0.85);
+  background: var(--setup-surface);
   color: var(--setup-text);
   font: inherit;
   font-size: 13px;

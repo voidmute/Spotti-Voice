@@ -7,7 +7,6 @@ import {
   HardDrive,
   History,
   Keyboard,
-  MousePointerClick,
   Cloud,
   Languages,
 } from "lucide-react";
@@ -25,7 +24,6 @@ import { languageFlagCountry } from "./voiceLanguages";
 import { CloudAuthPanel } from "./CloudAuthPanel";
 import { MicPanel } from "./MicPanel";
 import { HotkeyPanel } from "./HotkeyPanel";
-import { InjectPanel } from "./InjectPanel";
 import { HistoryPanel } from "./HistoryPanel";
 import { ModeSwitch, type SttMode } from "./ModeSwitch";
 import { SettingsTitleBar } from "./SettingsTitleBar";
@@ -66,7 +64,6 @@ type NavItem = {
 const NAV_ITEMS: NavItem[] = [
   { id: "mic", icon: Mic2, label: "Микрофон" },
   { id: "hotkey", icon: Keyboard, label: "Горячая клавиша" },
-  { id: "inject", icon: MousePointerClick, label: "Вставка" },
   { id: "cloud", icon: Cloud, label: "Discord", cloudOnly: true },
   { id: "language", icon: Languages, label: "Язык", cloudOnly: true },
   { id: "local", icon: HardDrive, label: "Локально", localOnly: true },
@@ -312,8 +309,6 @@ export function SettingsApp() {
             onCapturingChange={setHotkeyCapturing}
           />
         );
-      case "inject":
-        return <InjectPanel base={base} engineOnline={engineOnline === true} />;
       case "cloud":
         return (
           <div className="settings-panel-view">

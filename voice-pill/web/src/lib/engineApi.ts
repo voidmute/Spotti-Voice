@@ -31,7 +31,7 @@ const SETTINGS_SECTIONS = new Set<SettingsSection>([
 
 export function normalizeSettingsSection(value: unknown): SettingsSection {
   const raw = String(value ?? "").trim().toLowerCase();
-  if (raw === "settings" || raw === "device" || raw === "config") return "mic";
+  if (raw === "settings" || raw === "device" || raw === "config" || raw === "inject") return "mic";
   if (SETTINGS_SECTIONS.has(raw as SettingsSection)) return raw as SettingsSection;
   return "mic";
 }
@@ -219,6 +219,7 @@ declare global {
       cloudSignOut?: () => Promise<boolean>;
       cloudStatus?: () => Promise<{ ready: boolean; signedIn: boolean; userLabel: string | null }>;
       onCloudAuthChanged?: (handler: () => void) => () => void;
+      runUninstall?: () => Promise<{ ok: boolean; error?: string }>;
     };
   }
 }

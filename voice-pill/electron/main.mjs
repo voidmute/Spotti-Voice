@@ -43,7 +43,9 @@ if (typeof app.setName === "function") {
   app.setName("Spotti Voice");
 }
 
-const gotSingleInstanceLock = app.requestSingleInstanceLock();
+const uninstallMode = process.argv.some((entry) => entry === "--uninstall");
+
+const gotSingleInstanceLock = uninstallMode || app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
   app.quit();
   process.exit(0);
@@ -335,6 +337,8 @@ const PTT_FALLBACK_ACCELERATORS = [
 let overlayWindow = null;
 /** @type {BrowserWindow | null} */
 let settingsWindow = null;
+/** @type {BrowserWindow | null} */
+let uninstallWindow = null;
 /** @type {Tray | null} */
 let tray = null;
 /** @type {BrowserWindow | null} */
@@ -742,6 +746,36 @@ function settingsUrl() {
     /* ignore */
   }
   return `${href}${bust}`;
+}
+
+function uninstallUrl() {
+  const href = distPage("uninstall.html");
+  if (!href) return "http://127.0.0.1:5174/uninstall.html";
+  return href;
+}
+
+function resolveFetchWhisperScript() {
+  const candidates = [
+    path.join(ROOT, "scripts", "fetch-whisper.ps1"),
+    path.join(__dirname, "..", "scripts", "fetch-whisper.ps1"),
+  ];
+  return candidates.find((candidate) => fs.existsSync(candidate)) ?? null;
+}
+
+function ensureWhisperCppInstalled() {
+  if (process.platform !== "win32" || uninstallMode) return;
+  const script = resolveFetchWhisperScript();
+  if (!script) return;
+  try {
+    const child = spawn(
+      "powershell.exe",
+      ["-NoProfile", "-ExecutionPolicy", "Bypass", "-WindowStyle", "Hidden", "-File", script],
+      { detached: true, stdio: "ignore", windowsHide: true },
+    );
+    child.unref();
+  } catch (err) {
+    console.warn("whisper.cpp bootstrap failed", err);
+  }
 }
 
 function attachLoadDiagnostics(win, label) {
@@ -1379,6 +1413,45 @@ async function createSettings(engineSettings = null) {
   });
 }
 
+async function createUninstallWindow() {
+  if (uninstallWindow) {
+    uninstallWindow.focus();
+    return;
+  }
+  const icons = getAppIcons();
+  uninstallWindow = new BrowserWindow({
+    width: SETTINGS_CONTENT_WIDTH,
+    height: 480,
+    minWidth: 560,
+    minHeight: 420,
+    useContentSize: true,
+    frame: false,
+    backgroundColor: "#f4f2ee",
+    autoHideMenuBar: true,
+    title: "Удаление Spotti Voice",
+    icon: icons.window,
+    show: false,
+    resizable: false,
+    webPreferences: {
+      preload: path.join(__dirname, "preload.cjs"),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+  attachLoadDiagnostics(uninstallWindow, "uninstall");
+  uninstallWindow.loadURL(uninstallUrl());
+  uninstallWindow.once("ready-to-show", () => {
+    if (!uninstallWindow || uninstallWindow.isDestroyed()) return;
+    if (!icons.window.isEmpty()) {
+      uninstallWindow.setIcon(icons.window);
+    }
+    uninstallWindow.show();
+  });
+  uninstallWindow.on("closed", () => {
+    uninstallWindow = null;
+  });
+}
+
 function nativeWindowHwnd(win) {
   if (!win || win.isDestroyed()) return 0;
   try {
@@ -1395,7 +1468,7 @@ function nativeWindowHwnd(win) {
 function ownWindowHwnds() {
   /** @type {number[]} */
   const hwnds = [];
-  for (const win of [overlayWindow, settingsWindow, trayMenuWindow]) {
+  for (const win of [overlayWindow, settingsWindow, uninstallWindow, trayMenuWindow]) {
     const hwnd = nativeWindowHwnd(win);
     if (hwnd > 0) hwnds.push(hwnd);
   }
@@ -1641,9 +1714,20 @@ ipcMain.handle("voice:engine-base", (event) => {
   return ENGINE_BASE;
 });
 
-function settingsWindowFromEvent(event) {
+function chromeWindowFromEvent(event) {
   const win = BrowserWindow.fromWebContents(event.sender);
-  if (!win || win.isDestroyed() || win !== settingsWindow) {
+  if (!win || win.isDestroyed()) {
+    throw new Error("Untrusted chrome window");
+  }
+  if (win !== settingsWindow && win !== uninstallWindow) {
+    throw new Error("Untrusted chrome window");
+  }
+  return win;
+}
+
+function settingsWindowFromEvent(event) {
+  const win = chromeWindowFromEvent(event);
+  if (win !== settingsWindow) {
     throw new Error("Untrusted settings window");
   }
   return win;
@@ -1651,13 +1735,13 @@ function settingsWindowFromEvent(event) {
 
 ipcMain.handle("voice:window-minimize", (event) => {
   if (!isTrustedSender(event)) throw new Error("Untrusted IPC sender");
-  settingsWindowFromEvent(event).minimize();
+  chromeWindowFromEvent(event).minimize();
   return true;
 });
 
 ipcMain.handle("voice:window-close", (event) => {
   if (!isTrustedSender(event)) throw new Error("Untrusted IPC sender");
-  settingsWindowFromEvent(event).close();
+  chromeWindowFromEvent(event).close();
   return true;
 });
 
@@ -1767,6 +1851,35 @@ ipcMain.handle("voice:cloud-status", async (event) => {
   }
 });
 
+ipcMain.handle("voice:run-uninstall", async (event) => {
+  if (!isTrustedSender(event)) throw new Error("Untrusted IPC sender");
+  if (event.sender !== uninstallWindow?.webContents) {
+    throw new Error("Untrusted uninstall window");
+  }
+  const installDir = path.join(__dirname, "..");
+  const ps1 = path.join(installDir, "Uninstall.ps1");
+  if (!fs.existsSync(ps1)) {
+    return { ok: false, error: "missing_script" };
+  }
+  spawn(
+    "powershell.exe",
+    [
+      "-NoProfile",
+      "-ExecutionPolicy",
+      "Bypass",
+      "-WindowStyle",
+      "Hidden",
+      "-File",
+      ps1,
+      "-AfterPid",
+      String(process.pid),
+    ],
+    { detached: true, stdio: "ignore", windowsHide: true },
+  ).unref();
+  setTimeout(() => app.quit(), 500);
+  return { ok: true };
+});
+
 ipcMain.handle("voice:overlay-size", (event, size) => {
   if (!isTrustedSender(event)) throw new Error("Untrusted IPC sender");
   if (
@@ -1796,9 +1909,16 @@ app.on("second-instance", (_event, argv) => {
 
 app.whenReady().then(async () => {
   registerSpottiVoiceProtocol();
+  getAppIcons();
+
+  if (uninstallMode) {
+    await createUninstallWindow();
+    return;
+  }
+
   const bootCallback = oauthCallbackFromArgv(process.argv);
   if (bootCallback) void finishOAuthCallback(bootCallback);
-  getAppIcons();
+  ensureWhisperCppInstalled();
   await initTrayMouseReleaseDetection();
   const existing = await waitForEngine(8);
   if (!existing) {

@@ -619,7 +619,7 @@ function createWindow() {
     height: 640,
     minWidth: 720,
     minHeight: 520,
-    backgroundColor: "#121212",
+    backgroundColor: "#f4f2ee",
     frame: false,
     titleBarStyle: "hidden",
     autoHideMenuBar: true,
@@ -658,7 +658,7 @@ function showFallbackErrorPage(message, exitCode) {
   mainWindow = new BrowserWindow({
     width: 560,
     height: 420,
-    backgroundColor: "#12121a",
+    backgroundColor: "#f4f2ee",
     autoHideMenuBar: true,
     title: "Spotti Voice",
     webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true },
