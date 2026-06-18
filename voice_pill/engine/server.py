@@ -126,7 +126,7 @@ async def _on_utterance(pcm: bytes) -> None:
         else:
             if not cloud_stt_ready():
                 await _broadcast_error(
-                    "Войдите в облако: Настройки → Облако → Войти через Discord.",
+                    "Войдите через Discord в окне облака.",
                     code="cloud_auth_required",
                 )
                 return
@@ -177,7 +177,10 @@ async def _on_utterance(pcm: bytes) -> None:
         return
 
     if not text:
-        await _broadcast_error("Речь не распознана", code="stt_empty")
+        await _broadcast_error(
+            "Речь не распознана. Удерживайте клавишу дольше и говорите ближе к микрофону.",
+            code="stt_empty",
+        )
         return
 
     logger.info("ptt_cycle stt_ok len=%s preview=%r", len(text), text[:48])

@@ -11,8 +11,10 @@ contextBridge.exposeInMainWorld("spottiVoice", {
   closeWindow: () => ipcRenderer.invoke("voice:window-close"),
   reloadHotkey: () => ipcRenderer.invoke("voice:reload-hotkey"),
   setHotkeyCapture: (enabled) => ipcRenderer.invoke("voice:set-hotkey-capture", enabled),
-  cloudSignIn: () => ipcRenderer.invoke("voice:cloud-sign-in"),
-  cloudSignOut: () => ipcRenderer.invoke("voice:cloud-sign-out"),
+      cloudSignIn: () => ipcRenderer.invoke("voice:cloud-sign-in"),
+      cloudAuthBegin: () => ipcRenderer.invoke("voice:cloud-auth-begin"),
+      cloudAuthFinish: (callbackUrl) => ipcRenderer.invoke("voice:cloud-auth-finish", callbackUrl),
+      cloudSignOut: () => ipcRenderer.invoke("voice:cloud-sign-out"),
   cloudStatus: () => ipcRenderer.invoke("voice:cloud-status"),
   runUninstall: () => ipcRenderer.invoke("voice:run-uninstall"),
   onCloudAuthChanged: (handler) => {

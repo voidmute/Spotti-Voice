@@ -18,7 +18,7 @@ async function fetchWhisperStatus(base: string): Promise<WhisperInstallStatus> {
       ready: false,
       phase: "idle",
       percent: 0,
-      message: "Не удалось проверить whisper.cpp",
+      message: "Не удалось проверить движок Spotti",
     };
   }
   return res.json();
@@ -79,7 +79,7 @@ export function LocalWhisperPanel({ base }: { base: string }) {
         </p>
       </div>
 
-      <section className="settings-whisper-card" aria-label="whisper.cpp">
+      <section className="settings-whisper-card" aria-label="Движок Spotti">
         <div className="settings-whisper-card__head">
           <span className="settings-whisper-card__icon" aria-hidden>
             {ready ? (
@@ -91,11 +91,11 @@ export function LocalWhisperPanel({ base }: { base: string }) {
             )}
           </span>
           <div>
-            <h3 className="settings-whisper-card__title">whisper.cpp</h3>
+            <h3 className="settings-whisper-card__title">Движок Spotti</h3>
             <p className="settings-whisper-card__meta">
               {ready
                 ? "Локальное распознавание готово."
-                : status?.message || "Проверка whisper.cpp…"}
+                : status?.message || "Проверка движка Spotti…"}
             </p>
           </div>
         </div>

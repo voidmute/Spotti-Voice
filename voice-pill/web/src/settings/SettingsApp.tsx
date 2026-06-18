@@ -1,14 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
-import {
-  Mic2,
-  Loader2,
-  AlertCircle,
-  HardDrive,
-  History,
-  Keyboard,
-  Cloud,
-  Languages,
-} from "lucide-react";
+import { Mic2, Loader2, AlertCircle, History, Keyboard } from "lucide-react";
 import {
   fetchSettings,
   normalizeSettingsSection,
@@ -17,31 +8,32 @@ import {
   type SettingsSection,
   type VoiceSettings,
 } from "../lib/engineApi";
-import { LanguagePicker } from "./LanguagePicker";
-import { CloudAuthPanel } from "./CloudAuthPanel";
 import { MicPanel } from "./MicPanel";
 import { HotkeyPanel } from "./HotkeyPanel";
 import { HistoryPanel } from "./HistoryPanel";
-import { LocalWhisperPanel } from "./LocalWhisperPanel";
 import { ModeSwitch, type SttMode } from "./ModeSwitch";
 import { SettingsTitleBar } from "./SettingsTitleBar";
+import { CloudAuthGate, fetchCloudSignedIn } from "./CloudAuthGate";
 import "./settings.css";
 
 const LOCAL_STT_LANGUAGE = "ru";
+const CLOUD_STT_LANGUAGE = "auto";
 const INJECT_DEFAULTS = {
   injectMethod: "auto",
   appendTrailingSpace: true,
 } as const;
 const AUTO_SAVE_MS = 200;
 
+const CORE_SECTIONS = new Set<SettingsSection>(["mic", "hotkey", "history"]);
+
 function settingsPayload(settings: VoiceSettings) {
   return {
     sttMode: settings.sttMode,
-    language: settings.sttMode === "local" ? LOCAL_STT_LANGUAGE : settings.language,
+    language: settings.sttMode === "local" ? LOCAL_STT_LANGUAGE : CLOUD_STT_LANGUAGE,
     hotkey: settings.hotkey,
     localModel: settings.localModel,
     inputDeviceIndex: settings.inputDeviceIndex,
-    settingsSection: settings.settingsSection,
+    settingsSection: normalizeSettingsSection(settings.settingsSection),
     ...INJECT_DEFAULTS,
   };
 }
@@ -54,16 +46,11 @@ type NavItem = {
   id: SettingsSection;
   icon: ComponentType<{ size?: number; strokeWidth?: number }>;
   label: string;
-  cloudOnly?: boolean;
-  localOnly?: boolean;
 };
 
 const NAV_ITEMS: NavItem[] = [
   { id: "mic", icon: Mic2, label: "Микрофон" },
   { id: "hotkey", icon: Keyboard, label: "Горячая клавиша" },
-  { id: "cloud", icon: Cloud, label: "Облако", cloudOnly: true },
-  { id: "language", icon: Languages, label: "Язык", cloudOnly: true },
-  { id: "local", icon: HardDrive, label: "Локально", localOnly: true },
   { id: "history", icon: History, label: "История" },
 ];
 
@@ -121,23 +108,17 @@ export function SettingsApp() {
   const [statusKind, setStatusKind] = useState<"ok" | "err" | "">("");
   const [engineOnline, setEngineOnline] = useState<boolean | null>(null);
   const [hotkeyCapturing, setHotkeyCapturing] = useState(false);
+  const [authGateOpen, setAuthGateOpen] = useState(false);
 
   const hydratedRef = useRef(false);
   const lastSavedFingerprintRef = useRef<string | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const authPromptedRef = useRef(false);
 
   const sttMode = settings?.sttMode ?? "local";
   const isCloud = sttMode === "cloud";
 
-  const visibleNav = useMemo(
-    () =>
-      NAV_ITEMS.filter((item) => {
-        if (item.cloudOnly && !isCloud) return false;
-        if (item.localOnly && isCloud) return false;
-        return true;
-      }),
-    [isCloud],
-  );
+  const visibleNav = useMemo(() => NAV_ITEMS, []);
 
   useEffect(() => {
     void resolveEngineBase().then(setBase);
@@ -147,11 +128,14 @@ export function SettingsApp() {
     if (!base) return;
     hydratedRef.current = false;
     lastSavedFingerprintRef.current = null;
+    authPromptedRef.current = false;
 
     void fetchSettings(base)
       .then((s) => {
         const normalized: VoiceSettings = {
-          ...(s.sttMode === "local" ? { ...s, language: LOCAL_STT_LANGUAGE } : s),
+          ...(s.sttMode === "local"
+            ? { ...s, language: LOCAL_STT_LANGUAGE }
+            : { ...s, language: CLOUD_STT_LANGUAGE }),
           inputDeviceIndex:
             s.inputDeviceIndex === undefined || s.inputDeviceIndex === null
               ? null
@@ -165,6 +149,12 @@ export function SettingsApp() {
         setStatusKind("");
         lastSavedFingerprintRef.current = settingsFingerprint(normalized);
         hydratedRef.current = true;
+
+        if (normalized.sttMode === "cloud") {
+          void fetchCloudSignedIn(base).then((signedIn) => {
+            if (!signedIn) setAuthGateOpen(true);
+          });
+        }
       })
       .catch(() => {
         setEngineOnline(false);
@@ -234,12 +224,11 @@ export function SettingsApp() {
   }, [hotkeyCapturing]);
 
   useEffect(() => {
-    if (!visibleNav.some((item) => item.id === section)) {
-      const fallback = visibleNav[0]?.id ?? "mic";
-      setSection(fallback);
-      if (settings) setSettings({ ...settings, settingsSection: fallback });
+    if (!CORE_SECTIONS.has(section)) {
+      setSection("mic");
+      if (settings) setSettings({ ...settings, settingsSection: "mic" });
     }
-  }, [visibleNav, section, settings]);
+  }, [section, settings]);
 
   function onSectionChange(next: SettingsSection) {
     setSection(next);
@@ -247,18 +236,21 @@ export function SettingsApp() {
     setSettings({ ...settings, settingsSection: next });
   }
 
-  function onModeChange(next: SttMode) {
+  async function onModeChange(next: SttMode) {
     if (!settings) return;
     if (next === "cloud") {
-      setSettings({ ...settings, sttMode: "cloud", settingsSection: section });
-    } else {
-      setSettings({
-        ...settings,
-        sttMode: "local",
-        language: LOCAL_STT_LANGUAGE,
-        settingsSection: section,
-      });
+      setSettings({ ...settings, sttMode: "cloud", language: CLOUD_STT_LANGUAGE, settingsSection: section });
+      const signedIn = await fetchCloudSignedIn(base);
+      if (!signedIn) setAuthGateOpen(true);
+      return;
     }
+    setAuthGateOpen(false);
+    setSettings({
+      ...settings,
+      sttMode: "local",
+      language: LOCAL_STT_LANGUAGE,
+      settingsSection: section,
+    });
   }
 
   function renderPanel() {
@@ -269,6 +261,7 @@ export function SettingsApp() {
         return (
           <MicPanel
             base={base}
+            sttMode={sttMode}
             inputDeviceIndex={settings.inputDeviceIndex}
             engineOnline={engineOnline === true}
             onMicChange={(inputDeviceIndex) => setSettings({ ...settings, inputDeviceIndex })}
@@ -282,58 +275,6 @@ export function SettingsApp() {
             onHotkeyChange={(hotkey) => setSettings({ ...settings, hotkey })}
             onCapturingChange={setHotkeyCapturing}
           />
-        );
-      case "cloud":
-        return (
-          <div className="settings-panel-view">
-            <header className="settings-panel-view__head">
-              <div className="settings-panel-view__icon">
-                <Cloud size={22} strokeWidth={2} aria-hidden />
-              </div>
-              <div>
-                <h2>Облако</h2>
-                <p>Вход через Discord для распознавания на сервере Spotti.</p>
-              </div>
-            </header>
-            <div className="settings-card">
-              <CloudAuthPanel base={base} />
-            </div>
-          </div>
-        );
-      case "language":
-        return (
-          <div className="settings-panel-view">
-            <header className="settings-panel-view__head">
-              <div className="settings-panel-view__icon">
-                <Languages size={22} strokeWidth={2} aria-hidden />
-              </div>
-              <div>
-                <h2>Язык речи</h2>
-                <p>Автоопределение или фиксированный язык для облака.</p>
-              </div>
-            </header>
-            <div className="settings-card">
-              <LanguagePicker
-                value={settings.language}
-                onChange={(language) => setSettings({ ...settings, language })}
-              />
-            </div>
-          </div>
-        );
-      case "local":
-        return (
-          <div className="settings-panel-view">
-            <header className="settings-panel-view__head">
-              <div className="settings-panel-view__icon">
-                <HardDrive size={22} strokeWidth={2} aria-hidden />
-              </div>
-              <div>
-                <h2>Локальный режим</h2>
-                <p>Распознавание на компьютере без отправки аудио в сеть.</p>
-              </div>
-            </header>
-            <LocalWhisperPanel base={base} />
-          </div>
         );
       case "history":
         return (
@@ -356,11 +297,11 @@ export function SettingsApp() {
   }
 
   return (
-    <div className="settings-app settings-app--v2 settings-app--figjam">
+    <div className={`settings-app settings-app--v2 settings-app--figjam${authGateOpen ? " is-auth-gate" : ""}`}>
       <SettingsTitleBar
         modeSwitch={
           settings ? (
-            <ModeSwitch value={sttMode} onChange={onModeChange} disabled={engineOnline !== true} />
+            <ModeSwitch value={sttMode} onChange={(mode) => void onModeChange(mode)} disabled={engineOnline !== true} />
           ) : null
         }
       />
@@ -385,6 +326,14 @@ export function SettingsApp() {
           )}
         </main>
       </div>
+
+      <CloudAuthGate
+        open={authGateOpen && isCloud}
+        onClose={() => setAuthGateOpen(false)}
+        onSignedIn={() => {
+          authPromptedRef.current = true;
+        }}
+      />
 
       {settings ? <SaveNotice message={status} kind={statusKind} /> : null}
     </div>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Check, ChevronLeft, ChevronRight, ClipboardCopy, Loader2, Pencil, Trash2, X } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Copy, Loader2, Pencil, Trash2, X } from "lucide-react";
 import {
   deleteHistoryEntry,
   fetchHistory,
@@ -130,15 +130,11 @@ function HistoryRow({
           <>
             <button
               type="button"
-              className="history-icon-btn"
+              className={`history-icon-btn${copied ? " is-copied" : ""}`}
               aria-label="Копировать"
               onClick={() => void copyText()}
             >
-              {copied ? (
-                <Check size={15} strokeWidth={2.25} />
-              ) : (
-                <ClipboardCopy size={15} strokeWidth={2.25} />
-              )}
+              {copied ? <Check size={15} strokeWidth={2.25} /> : <Copy size={15} strokeWidth={2.25} />}
             </button>
             <button
               type="button"

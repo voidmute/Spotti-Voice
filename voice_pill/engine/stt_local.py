@@ -26,6 +26,21 @@ WHISPER_NOT_INSTALLED = (
 )
 
 
+def _clean_whisper_text(raw: str) -> str:
+    lines: list[str] = []
+    for line in (raw or "").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        if line.startswith("[") and "-->" in line:
+            _, _, tail = line.partition("]")
+            line = tail.strip()
+        if not line or line.startswith("whisper_") or line.startswith("main:"):
+            continue
+        lines.append(line)
+    return " ".join(lines).strip()
+
+
 def transcribe_pcm(
     pcm: bytes,
     *,
@@ -52,6 +67,7 @@ def transcribe_pcm(
         if lang == "auto":
             lang = "ru"
 
+        out_base = wav_path.with_suffix("")
         args = [
             str(cli),
             "-m",
@@ -62,6 +78,9 @@ def transcribe_pcm(
             "-np",
             "-l",
             lang,
+            "-otxt",
+            "-of",
+            str(out_base),
         ]
         run_kwargs: dict = {
             "args": args,
@@ -86,19 +105,18 @@ def transcribe_pcm(
                 proc.returncode,
                 (proc.stderr or proc.stdout or "")[:300],
             )
-            return ""
-        text = (proc.stdout or "").strip()
+        text = _clean_whisper_text(proc.stdout or "")
+        if not text:
+            txt_path = out_base.with_suffix(".txt")
+            if txt_path.is_file():
+                text = _clean_whisper_text(txt_path.read_text(encoding="utf-8", errors="replace"))
         if not text and proc.stderr:
-            # Some builds log transcript to stderr
-            for line in proc.stderr.splitlines():
-                line = line.strip()
-                if line and not line.startswith("["):
-                    text = line
-                    break
+            text = _clean_whisper_text(proc.stderr)
         return text
     finally:
         try:
             wav_path.unlink(missing_ok=True)
+            out_base.with_suffix(".txt").unlink(missing_ok=True)
         except OSError:
             pass
 

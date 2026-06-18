@@ -32,6 +32,7 @@ const SETTINGS_SECTIONS = new Set<SettingsSection>([
 export function normalizeSettingsSection(value: unknown): SettingsSection {
   const raw = String(value ?? "").trim().toLowerCase();
   if (raw === "settings" || raw === "device" || raw === "config" || raw === "inject") return "mic";
+  if (raw === "cloud" || raw === "language" || raw === "local") return "mic";
   if (SETTINGS_SECTIONS.has(raw as SettingsSection)) return raw as SettingsSection;
   return "mic";
 }
@@ -216,6 +217,8 @@ declare global {
       reloadHotkey?: () => Promise<boolean>;
       setHotkeyCapture?: (enabled: boolean) => Promise<boolean>;
       cloudSignIn?: () => Promise<{ ok: boolean; error?: string }>;
+      cloudAuthBegin?: () => Promise<{ ok: boolean; authorizeUrl?: string; error?: string }>;
+      cloudAuthFinish?: (callbackUrl: string) => Promise<{ ok: boolean; error?: string }>;
       cloudSignOut?: () => Promise<boolean>;
       cloudStatus?: () => Promise<{
         ready: boolean;

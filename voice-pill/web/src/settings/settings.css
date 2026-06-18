@@ -10,7 +10,7 @@
   --setup-border-strong: #cfcfd8;
   --setup-text: #121218;
   --setup-muted: #6b6b78;
-  --setup-accent: #5865f2;
+  --setup-accent: oklch(0.42 0.02 278);
   --setup-accent-soft: rgb(88 101 242 / 0.12);
   --setup-accent-ring: rgb(88 101 242 / 0.35);
   --setup-success: #065f46;
@@ -102,13 +102,11 @@
   background: color-mix(in srgb, var(--setup-bg) 94%, white);
   backdrop-filter: blur(10px);
   user-select: none;
+  -webkit-app-region: drag;
 }
 
 .settings-titlebar__drag {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  -webkit-app-region: drag;
+  display: none;
 }
 
 .settings-titlebar__brand {
@@ -118,7 +116,6 @@
   align-items: center;
   gap: 11px;
   min-width: 0;
-  -webkit-app-region: drag;
 }
 
 .settings-titlebar__logo {
@@ -162,7 +159,6 @@
   z-index: 1;
   display: flex;
   justify-content: center;
-  -webkit-app-region: no-drag;
 }
 
 .settings-win-btn {
@@ -272,10 +268,11 @@
   padding: 3px;
   border-radius: 999px;
   border: 1px solid var(--setup-border-strong);
-  background: oklch(0.11 0.012 278 / 0.9);
-  box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.04);
+  background: var(--setup-surface-2);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.65);
   touch-action: none;
   cursor: pointer;
+  -webkit-app-region: no-drag;
 }
 
 .mode-switch.is-disabled {
@@ -290,11 +287,9 @@
   left: 3px;
   width: calc(50% - 3px);
   border-radius: 999px;
-  background:
-    linear-gradient(180deg, oklch(0.68 0.17 278), oklch(0.58 0.19 278));
-  box-shadow:
-    0 6px 18px oklch(0.45 0.18 278 / 0.45),
-    inset 0 1px 0 oklch(1 0 0 / 0.22);
+  background: #fff;
+  border: 1px solid var(--setup-border);
+  box-shadow: 0 1px 3px rgb(18 18 24 / 0.1);
   transition: transform 0.28s var(--setup-ease-out);
   pointer-events: none;
   z-index: 0;
@@ -319,17 +314,18 @@
   border: none;
   border-radius: 999px;
   background: transparent;
-  color: oklch(0.72 0.02 278);
+  color: var(--setup-muted);
   font-size: 13px;
   font-weight: 650;
   letter-spacing: -0.01em;
   cursor: pointer;
   transition: color 0.2s var(--setup-ease-out);
+  -webkit-app-region: no-drag;
 }
 
 .mode-switch__seg.is-active,
 .mode-switch__seg.is-preview {
-  color: oklch(0.98 0.01 278);
+  color: var(--setup-text);
 }
 
 .mode-switch__seg:focus-visible {
@@ -356,7 +352,8 @@
   padding: 14px 14px 12px;
   border-radius: var(--setup-radius-sm);
   border: 1px solid var(--setup-border);
-  background: oklch(0.155 0.016 278 / 0.85);
+  background: var(--setup-surface);
+  box-shadow: 0 1px 2px rgb(18 18 24 / 0.04);
   transition:
     border-color 0.2s var(--setup-ease-out),
     background 0.2s var(--setup-ease-out);
@@ -364,7 +361,7 @@
 
 .history-row:hover {
   border-color: var(--setup-border-strong);
-  background: var(--setup-surface);
+  background: var(--setup-surface-hover);
 }
 
 .history-row__meta {
@@ -381,8 +378,9 @@
 .history-row__mode {
   padding: 2px 8px;
   border-radius: 6px;
-  background: var(--setup-accent-soft);
-  color: oklch(0.82 0.08 285);
+  background: var(--setup-surface-2);
+  color: var(--setup-muted);
+  border: 1px solid var(--setup-border);
 }
 
 .history-row__text {
@@ -426,26 +424,29 @@
 .history-icon-btn {
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border: 1px solid var(--setup-border);
-  border-radius: 8px;
-  background: oklch(0.17 0.016 278);
+  border-radius: 10px;
+  background: var(--setup-surface-2);
   color: var(--setup-muted);
   cursor: pointer;
   transition:
     background 0.15s var(--setup-ease-out),
     color 0.15s var(--setup-ease-out),
-    transform 0.15s var(--setup-ease-out);
+    border-color 0.15s var(--setup-ease-out);
 }
 
 .history-icon-btn:hover {
   color: var(--setup-text);
-  background: var(--setup-surface-2);
+  background: var(--setup-surface-hover);
+  border-color: var(--setup-border-strong);
 }
 
-.history-icon-btn:active {
-  transform: scale(0.96);
+.history-icon-btn.is-copied {
+  color: var(--setup-success);
+  border-color: rgb(6 95 70 / 0.25);
+  background: rgb(6 95 70 / 0.08);
 }
 
 .history-icon-btn--ok {
@@ -1557,9 +1558,9 @@ html:has(.settings-app) body::-webkit-scrollbar {
 
 .settings-nav__item.is-active {
   color: var(--setup-text);
-  border-color: rgb(88 101 242 / 0.28);
-  background: linear-gradient(135deg, rgb(88 101 242 / 0.1), rgb(88 101 242 / 0.04));
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.7);
+  border-color: var(--setup-border-strong);
+  background: var(--setup-surface);
+  box-shadow: 0 1px 2px rgb(18 18 24 / 0.05);
 }
 
 .settings-nav__icon {
@@ -1572,8 +1573,9 @@ html:has(.settings-app) body::-webkit-scrollbar {
 }
 
 .settings-nav__item.is-active .settings-nav__icon {
-  color: var(--setup-accent);
-  background: var(--setup-accent-soft);
+  color: var(--setup-text);
+  background: var(--setup-surface-2);
+  border: 1px solid var(--setup-border);
 }
 
 .settings-app--v2 .settings-main {
@@ -2065,4 +2067,117 @@ html:has(.settings-app) body::-webkit-scrollbar {
 
 .settings-cloud-auth__signout {
   align-self: start;
+}
+
+.settings-app.is-auth-gate .settings-body,
+.settings-app.is-auth-gate .settings-titlebar {
+  filter: blur(5px);
+  pointer-events: none;
+}
+
+.cloud-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.cloud-gate__backdrop {
+  position: absolute;
+  inset: 0;
+  border: none;
+  background: rgb(18 18 24 / 0.28);
+  cursor: pointer;
+}
+
+.cloud-gate__card {
+  position: relative;
+  width: min(100%, 420px);
+  padding: 22px 22px 20px;
+  border-radius: 18px;
+  border: 1px solid var(--setup-border);
+  background: var(--setup-surface);
+  box-shadow: 0 24px 64px rgb(18 18 24 / 0.18);
+}
+
+.cloud-gate__close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--setup-muted);
+  cursor: pointer;
+}
+
+.cloud-gate__close:hover {
+  background: var(--setup-surface-hover);
+  color: var(--setup-text);
+}
+
+.cloud-gate__eyebrow {
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--setup-muted);
+}
+
+.cloud-gate__title {
+  margin: 0 0 8px;
+  font-size: 20px;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+.cloud-gate__desc {
+  margin: 0 0 16px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--setup-muted);
+}
+
+.cloud-gate__signin {
+  width: 100%;
+}
+
+.cloud-gate__webview-wrap {
+  height: 420px;
+  margin-top: 8px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--setup-border);
+  background: #fff;
+}
+
+.cloud-gate__webview {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+.cloud-gate__discord {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.cloud-gate__error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  color: var(--setup-error);
+  background: #fff1f2;
+  border: 1px solid #f5a8b0;
 }

@@ -7,9 +7,12 @@ import {
   type AudioInputDevice,
   type EngineEvent,
 } from "../lib/engineApi";
+import { LocalWhisperPanel } from "./LocalWhisperPanel";
+import type { SttMode } from "./ModeSwitch";
 
 type MicPanelProps = {
   base: string;
+  sttMode: SttMode;
   inputDeviceIndex: number | null;
   engineOnline: boolean;
   onMicChange: (deviceIndex: number | null) => void;
@@ -27,7 +30,7 @@ function MicLevelMeter({ level }: { level: number }) {
   );
 }
 
-export function MicPanel({ base, inputDeviceIndex, engineOnline, onMicChange }: MicPanelProps) {
+export function MicPanel({ base, sttMode, inputDeviceIndex, engineOnline, onMicChange }: MicPanelProps) {
   const [monitoring, setMonitoring] = useState(false);
   const [monitorError, setMonitorError] = useState("");
   const [displayLevel, setDisplayLevel] = useState(0);
@@ -174,6 +177,8 @@ export function MicPanel({ base, inputDeviceIndex, engineOnline, onMicChange }: 
           {monitoring ? "Остановить" : "Проверить микрофон"}
         </button>
       </div>
+
+      {sttMode === "local" ? <LocalWhisperPanel base={base} /> : null}
     </div>
   );
 }

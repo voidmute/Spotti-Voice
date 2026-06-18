@@ -253,7 +253,7 @@ function openOAuthLoginWindow(authorizeUrl, parentWin) {
   });
 }
 
-async function startCloudSignIn() {
+async function beginCloudAuth() {
   try {
     const health = await waitForEngine(32);
     if (!health) {
@@ -278,28 +278,15 @@ async function startCloudSignIn() {
     if (!url || typeof url !== "string") {
       return { ok: false, error: "oauth_start_failed" };
     }
-
-    const parent =
-      settingsWindow && !settingsWindow.isDestroyed() ? settingsWindow : null;
-    const callbackUrl = await openOAuthLoginWindow(url, parent);
-    const finished = await finishOAuthCallback(callbackUrl);
-    if (!finished) {
-      return { ok: false, error: "oauth_finish_failed" };
-    }
-    return { ok: true };
+    return { ok: true, authorizeUrl: url };
   } catch (err) {
-    closeOAuthLoginWindow();
-    if (err instanceof Error) {
-      if (err.message === "oauth_timeout") {
-        return { ok: false, error: "oauth_timeout" };
-      }
-      if (err.message === "oauth_cancelled") {
-        return { ok: false, error: "oauth_cancelled" };
-      }
-    }
     console.error("cloud auth begin failed", err);
     return { ok: false, error: "engine_offline" };
   }
+}
+
+async function startCloudSignIn() {
+  return beginCloudAuth();
 }
 
 /** Windows needs execPath + electron app dir or URL becomes argv[1] app path. */
@@ -1379,6 +1366,7 @@ async function createSettings(engineSettings = null) {
       preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,
       nodeIntegration: false,
+      webviewTag: true,
     },
   };
   if (typeof sw.x === "number" && typeof sw.y === "number") {
@@ -1829,6 +1817,23 @@ ipcMain.handle("voice:ptt", async (event, pressed) => {
 ipcMain.handle("voice:cloud-sign-in", async (event) => {
   if (!isTrustedSender(event)) throw new Error("Untrusted IPC sender");
   return startCloudSignIn();
+});
+
+ipcMain.handle("voice:cloud-auth-begin", async (event) => {
+  if (!isTrustedSender(event)) throw new Error("Untrusted IPC sender");
+  return beginCloudAuth();
+});
+
+ipcMain.handle("voice:cloud-auth-finish", async (event, callbackUrl) => {
+  if (!isTrustedSender(event)) throw new Error("Untrusted IPC sender");
+  if (!callbackUrl || typeof callbackUrl !== "string") {
+    return { ok: false, error: "invalid_callback" };
+  }
+  const finished = await finishOAuthCallback(callbackUrl);
+  if (finished && settingsWindow && !settingsWindow.isDestroyed()) {
+    settingsWindow.webContents.send("voice:cloud-auth-changed");
+  }
+  return { ok: Boolean(finished), error: finished ? undefined : "oauth_finish_failed" };
 });
 
 ipcMain.handle("voice:cloud-sign-out", async (event) => {
