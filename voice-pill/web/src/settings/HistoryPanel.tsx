@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Check, ChevronLeft, ChevronRight, Copy, Loader2, Pencil, Trash2, X } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Copy, Loader2, Trash2 } from "lucide-react";
 import {
   deleteHistoryEntry,
   fetchHistory,
   subscribeEngineEvents,
-  updateHistoryEntry,
   type TranscriptEntry,
 } from "../lib/engineApi";
 
@@ -30,37 +29,12 @@ function formatWhen(iso: string) {
 
 function HistoryRow({
   entry,
-  onUpdate,
   onDelete,
 }: {
   entry: TranscriptEntry;
-  onUpdate: (id: string, text: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
 }) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(entry.text);
-  const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    if (!editing) setDraft(entry.text);
-  }, [entry.text, editing]);
-
-  async function saveEdit() {
-    const next = draft.trim();
-    if (!next || next === entry.text) {
-      setEditing(false);
-      setDraft(entry.text);
-      return;
-    }
-    setBusy(true);
-    try {
-      await onUpdate(entry.id, next);
-      setEditing(false);
-    } finally {
-      setBusy(false);
-    }
-  }
 
   async function copyText() {
     try {
@@ -79,81 +53,25 @@ function HistoryRow({
         <span className="history-row__mode">{entry.sttMode === "cloud" ? "Облако" : "Локально"}</span>
       </div>
 
-      {editing ? (
-        <textarea
-          className="history-row__edit"
-          value={draft}
-          rows={3}
-          autoFocus
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") {
-              setEditing(false);
-              setDraft(entry.text);
-            }
-            if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-              void saveEdit();
-            }
-          }}
-        />
-      ) : (
-        <p className="history-row__text">{entry.text}</p>
-      )}
+      <p className="history-row__text">{entry.text}</p>
 
       <div className="history-row__actions">
-        {editing ? (
-          <>
-            <button
-              type="button"
-              className="history-icon-btn history-icon-btn--ok"
-              tabIndex={-1}
-            aria-label="Сохранить"
-              disabled={busy}
-              onClick={() => void saveEdit()}
-            >
-              <Check size={15} strokeWidth={2.25} />
-            </button>
-            <button
-              type="button"
-              className="history-icon-btn"
-              aria-label="Отмена"
-              disabled={busy}
-              onClick={() => {
-                setEditing(false);
-                setDraft(entry.text);
-              }}
-            >
-              <X size={15} strokeWidth={2.25} />
-            </button>
-          </>
-        ) : (
-          <>
-            <button
-              type="button"
-              className={`history-icon-btn${copied ? " is-copied" : ""}`}
-              aria-label="Копировать"
-              onClick={() => void copyText()}
-            >
-              {copied ? <Check size={15} strokeWidth={2.25} /> : <Copy size={15} strokeWidth={2.25} />}
-            </button>
-            <button
-              type="button"
-              className="history-icon-btn"
-              aria-label="Изменить"
-              onClick={() => setEditing(true)}
-            >
-              <Pencil size={15} strokeWidth={2.25} />
-            </button>
-            <button
-              type="button"
-              className="history-icon-btn history-icon-btn--danger"
-              aria-label="Удалить"
-              onClick={() => void onDelete(entry.id)}
-            >
-              <Trash2 size={15} strokeWidth={2.25} />
-            </button>
-          </>
-        )}
+        <button
+          type="button"
+          className={`history-icon-btn${copied ? " is-copied" : ""}`}
+          aria-label="Копировать"
+          onClick={() => void copyText()}
+        >
+          {copied ? <Check size={15} strokeWidth={2.25} /> : <Copy size={15} strokeWidth={2.25} />}
+        </button>
+        <button
+          type="button"
+          className="history-icon-btn history-icon-btn--danger"
+          aria-label="Удалить"
+          onClick={() => void onDelete(entry.id)}
+        >
+          <Trash2 size={15} strokeWidth={2.25} />
+        </button>
       </div>
     </li>
   );
@@ -203,11 +121,6 @@ export function HistoryPanel({ base, engineOnline }: HistoryPanelProps) {
     });
   }, [base, engineOnline]);
 
-  async function handleUpdate(id: string, text: string) {
-    const updated = await updateHistoryEntry(base, id, text);
-    setEntries((prev) => prev.map((e) => (e.id === id ? updated : e)));
-  }
-
   async function handleDelete(id: string) {
     await deleteHistoryEntry(base, id);
     setEntries((prev) => prev.filter((e) => e.id !== id));
@@ -248,12 +161,7 @@ export function HistoryPanel({ base, engineOnline }: HistoryPanelProps) {
     <div className="history-shell">
       <ul className="history-list history-list--compact" aria-label="История распознанной речи">
         {pageItems.map((entry) => (
-          <HistoryRow
-            key={entry.id}
-            entry={entry}
-            onUpdate={handleUpdate}
-            onDelete={handleDelete}
-          />
+          <HistoryRow key={entry.id} entry={entry} onDelete={handleDelete} />
         ))}
       </ul>
       {entries.length > PAGE_SIZE ? (

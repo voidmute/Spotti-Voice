@@ -1520,13 +1520,15 @@ html:has(.settings-app) body::-webkit-scrollbar {
   padding: 12px 8px;
   background: color-mix(in srgb, var(--setup-bg) 92%, white);
   border-right: 1px solid var(--setup-border);
+  min-height: 0;
 }
 
 .settings-nav {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
 }
 
 .settings-nav__item {
@@ -1824,8 +1826,8 @@ html:has(.settings-app) body::-webkit-scrollbar {
   width: 34px;
   height: 34px;
   border-radius: 10px;
-  border: 1px solid oklch(0.98 0.01 282 / 0.1);
-  background: oklch(0.15 0.016 282);
+  border: 1px solid var(--setup-border);
+  background: var(--setup-surface);
   color: var(--setup-text);
   cursor: pointer;
 }
@@ -2180,4 +2182,140 @@ html:has(.settings-app) body::-webkit-scrollbar {
   color: var(--setup-error);
   background: #fff1f2;
   border: 1px solid #f5a8b0;
+}
+
+/* ── Local mode note (flat, no purple hero) ── */
+
+.settings-local-note {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--setup-border);
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--setup-muted);
+}
+
+.settings-local-note__flag {
+  width: 20px;
+  height: 14px;
+  flex-shrink: 0;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.settings-account-local-hint {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ── Theme toggle ── */
+
+.settings-theme-toggle {
+  flex-shrink: 0;
+  display: grid;
+  gap: 8px;
+  margin-top: auto;
+  padding: 10px 8px 4px;
+  border-top: 1px solid var(--setup-border);
+}
+
+.settings-theme-toggle__label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--setup-muted);
+}
+
+.settings-theme-toggle__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--setup-muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease-out, color 0.15s ease-out, border-color 0.15s ease-out;
+}
+
+.settings-theme-toggle__btn:hover {
+  background: var(--setup-surface-hover);
+  color: var(--setup-text);
+}
+
+.settings-theme-toggle__btn.is-active {
+  border-color: var(--setup-border-strong);
+  background: var(--setup-surface);
+  color: var(--setup-text);
+  box-shadow: 0 1px 2px rgb(18 18 24 / 0.06);
+}
+
+/* ── Dark theme ── */
+
+.settings-app[data-theme="dark"] {
+  color-scheme: dark;
+  --setup-bg: #12121a;
+  --setup-bg-elevated: #171720;
+  --setup-surface: #1c1c26;
+  --setup-surface-2: #22222e;
+  --setup-surface-hover: #2a2a38;
+  --setup-border: rgb(255 255 255 / 0.1);
+  --setup-border-strong: rgb(255 255 255 / 0.16);
+  --setup-text: #ececf4;
+  --setup-muted: #9b9bb0;
+  --setup-accent: oklch(0.78 0.04 278);
+  --setup-accent-soft: rgb(88 101 242 / 0.18);
+  --setup-accent-ring: rgb(88 101 242 / 0.45);
+  --setup-success: #34d399;
+  --setup-error: #fb7185;
+  --setup-dot-color: rgb(120 120 140 / 0.35);
+}
+
+.settings-app[data-theme="dark"]::before {
+  background: radial-gradient(
+    ellipse 90% 70% at 50% 30%,
+    rgb(28 28 38 / 0.85),
+    transparent 72%
+  );
+  opacity: 0.65;
+}
+
+.settings-app[data-theme="dark"] .settings-titlebar {
+  background: color-mix(in srgb, var(--setup-bg) 88%, black);
+}
+
+.settings-app[data-theme="dark"].settings-app--v2 .settings-sidebar {
+  background: color-mix(in srgb, var(--setup-bg) 94%, black);
+}
+
+.settings-app[data-theme="dark"] .settings-card,
+.settings-app[data-theme="dark"] .settings-whisper-card,
+.settings-app[data-theme="dark"] .history-row {
+  box-shadow: none;
+}
+
+.settings-app[data-theme="dark"] .cloud-gate__webview-wrap {
+  background: #0f0f14;
+}
+
+.settings-app[data-theme="dark"] .cloud-gate__error {
+  background: rgb(251 113 133 / 0.12);
+  border-color: rgb(251 113 133 / 0.35);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings-theme-toggle__btn {
+    transition: none;
+  }
 }

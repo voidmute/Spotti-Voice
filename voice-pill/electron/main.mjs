@@ -335,7 +335,7 @@ let appIcons = null;
 
 const TRAY_MENU_WIDTH = 220;
 /** Fallback until renderer reports measured menu height. */
-const TRAY_MENU_HEIGHT = 232;
+const TRAY_MENU_HEIGHT = 188;
 const TRAY_MENU_CORNER_RADIUS = 12;
 const VK_RBUTTON = 0x02;
 /** @type {((vk: number) => number) | null} */
@@ -1150,7 +1150,7 @@ function positionTrayMenuWindow() {
 function resizeTrayMenuToContent(width, height) {
   if (!trayMenuWindow || trayMenuWindow.isDestroyed()) return;
   const w = Math.min(320, Math.max(180, Math.round(width)));
-  const h = Math.min(420, Math.max(160, Math.round(height)));
+  const h = Math.min(420, Math.max(120, Math.round(height)));
   trayMenuWindow.setBounds({
     ...trayMenuWindow.getBounds(),
     width: w,

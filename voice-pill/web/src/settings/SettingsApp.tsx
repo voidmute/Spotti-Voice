@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
-import { Mic2, Loader2, AlertCircle, History, Keyboard } from "lucide-react";
+import { Mic2, Loader2, AlertCircle, History, Keyboard, User } from "lucide-react";
 import {
   fetchSettings,
   normalizeSettingsSection,
@@ -11,9 +11,11 @@ import {
 import { MicPanel } from "./MicPanel";
 import { HotkeyPanel } from "./HotkeyPanel";
 import { HistoryPanel } from "./HistoryPanel";
+import { AccountPanel } from "./AccountPanel";
 import { ModeSwitch, type SttMode } from "./ModeSwitch";
 import { SettingsTitleBar } from "./SettingsTitleBar";
 import { CloudAuthGate, fetchCloudSignedIn } from "./CloudAuthGate";
+import { ThemeToggle, readStoredTheme, persistTheme, type UiTheme } from "./ThemeToggle";
 import "./settings.css";
 
 const LOCAL_STT_LANGUAGE = "ru";
@@ -24,7 +26,7 @@ const INJECT_DEFAULTS = {
 } as const;
 const AUTO_SAVE_MS = 200;
 
-const CORE_SECTIONS = new Set<SettingsSection>(["mic", "hotkey", "history"]);
+const CORE_SECTIONS = new Set<SettingsSection>(["mic", "hotkey", "history", "account"]);
 
 function settingsPayload(settings: VoiceSettings) {
   return {
@@ -51,6 +53,7 @@ type NavItem = {
 const NAV_ITEMS: NavItem[] = [
   { id: "mic", icon: Mic2, label: "Микрофон" },
   { id: "hotkey", icon: Keyboard, label: "Горячая клавиша" },
+  { id: "account", icon: User, label: "Аккаунт" },
   { id: "history", icon: History, label: "История" },
 ];
 
@@ -109,6 +112,7 @@ export function SettingsApp() {
   const [engineOnline, setEngineOnline] = useState<boolean | null>(null);
   const [hotkeyCapturing, setHotkeyCapturing] = useState(false);
   const [authGateOpen, setAuthGateOpen] = useState(false);
+  const [theme, setTheme] = useState<UiTheme>(() => readStoredTheme());
 
   const hydratedRef = useRef(false);
   const lastSavedFingerprintRef = useRef<string | null>(null);
@@ -119,6 +123,10 @@ export function SettingsApp() {
   const isCloud = sttMode === "cloud";
 
   const visibleNav = useMemo(() => NAV_ITEMS, []);
+
+  useEffect(() => {
+    persistTheme(theme);
+  }, [theme]);
 
   useEffect(() => {
     void resolveEngineBase().then(setBase);
@@ -276,6 +284,18 @@ export function SettingsApp() {
             onCapturingChange={setHotkeyCapturing}
           />
         );
+      case "account":
+        return (
+          <AccountPanel
+            base={base}
+            sttMode={sttMode}
+            onRequestSignIn={() => {
+              if (sttMode !== "cloud") void onModeChange("cloud");
+              setSection("account");
+              setAuthGateOpen(true);
+            }}
+          />
+        );
       case "history":
         return (
           <div className="settings-panel-view settings-panel-view--history">
@@ -285,7 +305,7 @@ export function SettingsApp() {
               </div>
               <div>
                 <h2>История</h2>
-                <p>Последние фразы - копирование, правка, удаление.</p>
+                <p>Последние фразы — копирование и удаление.</p>
               </div>
             </header>
             <HistoryPanel base={base} engineOnline={engineOnline === true} />
@@ -297,7 +317,10 @@ export function SettingsApp() {
   }
 
   return (
-    <div className={`settings-app settings-app--v2 settings-app--figjam${authGateOpen ? " is-auth-gate" : ""}`}>
+    <div
+      className={`settings-app settings-app--v2 settings-app--figjam${authGateOpen ? " is-auth-gate" : ""}`}
+      data-theme={theme}
+    >
       <SettingsTitleBar
         modeSwitch={
           settings ? (
@@ -309,7 +332,10 @@ export function SettingsApp() {
       <div className="settings-body">
         <aside className="settings-sidebar">
           {settings ? (
-            <SidebarNav value={section} items={visibleNav} onChange={onSectionChange} />
+            <>
+              <SidebarNav value={section} items={visibleNav} onChange={onSectionChange} />
+              <ThemeToggle value={theme} onChange={setTheme} />
+            </>
           ) : (
             <div className="settings-sidebar__placeholder" />
           )}

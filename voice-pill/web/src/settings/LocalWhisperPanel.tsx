@@ -66,19 +66,6 @@ export function LocalWhisperPanel({ base }: { base: string }) {
 
   return (
     <div className="settings-local-stack">
-      <div className="settings-local-hero">
-        <span className="settings-local-hero__badge">
-          <LanguageFlag
-            country={languageFlagCountry("ru") ?? "RU"}
-            className="settings-lang-chip__flag"
-          />
-          <span>Русский</span>
-        </span>
-        <p className="settings-local-hero__note">
-          Локальный режим распознаёт только русский. Для других языков переключитесь на Облако.
-        </p>
-      </div>
-
       <section className="settings-whisper-card" aria-label="Движок Spotti">
         <div className="settings-whisper-card__head">
           <span className="settings-whisper-card__icon" aria-hidden>
@@ -114,6 +101,16 @@ export function LocalWhisperPanel({ base }: { base: string }) {
             </p>
           </div>
         ) : null}
+
+        <p className="settings-local-note">
+          <LanguageFlag
+            country={languageFlagCountry("ru") ?? "RU"}
+            className="settings-local-note__flag"
+          />
+          <span>
+            Только русский. Для других языков переключитесь на <strong>Облако</strong>.
+          </span>
+        </p>
       </section>
     </div>
   );

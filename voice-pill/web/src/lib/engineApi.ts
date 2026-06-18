@@ -13,6 +13,7 @@ export async function resolveEngineBase(): Promise<string> {
 export type SettingsSection =
   | "mic"
   | "hotkey"
+  | "account"
   | "inject"
   | "cloud"
   | "language"
@@ -22,6 +23,7 @@ export type SettingsSection =
 const SETTINGS_SECTIONS = new Set<SettingsSection>([
   "mic",
   "hotkey",
+  "account",
   "inject",
   "cloud",
   "language",
@@ -32,7 +34,8 @@ const SETTINGS_SECTIONS = new Set<SettingsSection>([
 export function normalizeSettingsSection(value: unknown): SettingsSection {
   const raw = String(value ?? "").trim().toLowerCase();
   if (raw === "settings" || raw === "device" || raw === "config" || raw === "inject") return "mic";
-  if (raw === "cloud" || raw === "language" || raw === "local") return "mic";
+  if (raw === "cloud") return "account";
+  if (raw === "language" || raw === "local") return "mic";
   if (SETTINGS_SECTIONS.has(raw as SettingsSection)) return raw as SettingsSection;
   return "mic";
 }

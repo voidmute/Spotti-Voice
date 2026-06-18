@@ -61,7 +61,13 @@ function DiscordMark() {
   );
 }
 
-export function CloudAuthPanel({ base }: { base: string }) {
+export function CloudAuthPanel({
+  base,
+  onInAppSignIn,
+}: {
+  base: string;
+  onInAppSignIn?: () => void;
+}) {
   const [status, setStatus] = useState<CloudStatus | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -94,6 +100,15 @@ export function CloudAuthPanel({ base }: { base: string }) {
     setBusy(true);
     setError("");
     try {
+      if (window.spottiVoice?.cloudAuthBegin) {
+        const result = await window.spottiVoice.cloudAuthBegin();
+        if (!result?.ok || !result.authorizeUrl) {
+          setError(cloudAuthErrorMessage("begin_failed"));
+          return;
+        }
+        onInAppSignIn?.();
+        return;
+      }
       if (window.spottiVoice?.cloudSignIn) {
         const result = (await window.spottiVoice.cloudSignIn()) as CloudSignInResult;
         if (!result?.ok) {
