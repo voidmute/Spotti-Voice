@@ -259,9 +259,35 @@ def sign_out() -> None:
 
 
 def cloud_user_label() -> Optional[str]:
+    profile = cloud_user_profile()
+    return profile.get("userLabel") if profile else None
+
+
+def _discord_avatar_url(user_id: str | int | None, avatar: str | None, size: int = 128) -> Optional[str]:
+    if not user_id:
+        return None
+    user_id_str = str(user_id)
+    if avatar:
+        ext = "gif" if str(avatar).startswith("a_") else "png"
+        return f"https://cdn.discordapp.com/avatars/{user_id_str}/{avatar}.{ext}?size={size}"
+    try:
+        index = (int(user_id_str) >> 22) % 6
+    except (TypeError, ValueError):
+        index = 0
+    return f"https://cdn.discordapp.com/embed/avatars/{index}.png"
+
+
+def cloud_user_profile() -> Optional[dict[str, Any]]:
     creds = load_credentials()
     if not creds:
         return None
     user = creds.get("user") if isinstance(creds.get("user"), dict) else {}
+    user_id = user.get("id")
+    avatar = user.get("avatar")
     name = user.get("global_name") or user.get("username")
-    return str(name) if name else None
+    label = str(name) if name else None
+    return {
+        "userLabel": label,
+        "userId": str(user_id) if user_id is not None else None,
+        "avatarUrl": _discord_avatar_url(user_id, avatar),
+    }

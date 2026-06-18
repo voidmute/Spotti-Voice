@@ -164,7 +164,7 @@ export function DevicePanel({
         setInjectTestMsg("Не удалось вставить. Кликните в поле ввода и повторите.");
       }
     } catch {
-      setInjectTestMsg("Тест вставки недоступен — движок офлайн.");
+      setInjectTestMsg("Тест вставки недоступен - движок офлайн.");
     } finally {
       setInjectTesting(false);
     }
@@ -306,7 +306,7 @@ export function DevicePanel({
           <Keyboard size={18} strokeWidth={2.25} aria-hidden />
           <div>
             <h3>Горячая клавиша</h3>
-            <p>Удерживайте сочетание, чтобы говорить. F1–F12 можно без Ctrl. Esc — отмена.</p>
+            <p>Удерживайте сочетание, чтобы говорить. F1-F12 можно без Ctrl. Esc - отмена.</p>
           </div>
         </div>
         <HotkeyDisplay hotkey={hotkey} />
@@ -316,7 +316,7 @@ export function DevicePanel({
           className={`settings-hotkey-capture${capturing ? " is-capturing" : ""}`}
         >
           {capturing ? (
-            <p className="settings-hotkey-capture__prompt">Нажмите клавишу или сочетание. F4, Ctrl+Shift+V… Esc — отмена.</p>
+            <p className="settings-hotkey-capture__prompt">Нажмите клавишу или сочетание. F4, Ctrl+Shift+V… Esc - отмена.</p>
           ) : null}
           <button
             type="button"

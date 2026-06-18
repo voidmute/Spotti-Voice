@@ -203,7 +203,7 @@ function openOAuthLoginWindow(authorizeUrl, parentWin) {
       modal: Boolean(parent),
       show: false,
       autoHideMenuBar: true,
-      title: "Вход через Discord — Spotti",
+      title: "Вход через Discord - Spotti",
       backgroundColor: "#f4f2ee",
       icon: getAppIcons().window,
       webPreferences: {
@@ -1844,10 +1844,10 @@ ipcMain.handle("voice:cloud-status", async (event) => {
   if (!isTrustedSender(event)) throw new Error("Untrusted IPC sender");
   try {
     const res = await fetch(`${ENGINE_BASE}/api/cloud/status`);
-    if (!res.ok) return { ready: false, signedIn: false, userLabel: null };
+    if (!res.ok) return { ready: false, signedIn: false, userLabel: null, userId: null, avatarUrl: null };
     return await res.json();
   } catch {
-    return { ready: false, signedIn: false, userLabel: null };
+    return { ready: false, signedIn: false, userLabel: null, userId: null, avatarUrl: null };
   }
 });
 

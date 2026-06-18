@@ -199,7 +199,7 @@ export default function App() {
         <aside className="settings-sidebar" aria-hidden={step === "error"}>
           <div className="settings-sidebar__brand">
             <div className="settings-sidebar__mark setup-hero-mark">
-              <img src="./white-only.png" alt="" />
+              <img src="./brand-mark.png" alt="" />
             </div>
           </div>
 
@@ -265,7 +265,7 @@ export default function App() {
             {!loading && step === "welcome" ? (
               <div className={stageClass}>
                 <div className="setup-welcome-hero">
-                  <img className="setup-welcome-hero__logo" src="./white-only.png" alt="" />
+                  <img className="setup-welcome-hero__logo" src="./brand-mark.png" alt="" />
                   <div>
                     <h2 className="setup-welcome-hero__title">Spotti Voice</h2>
                     <p className="setup-welcome-hero__subtitle">
@@ -294,7 +294,7 @@ export default function App() {
                 <div className="settings-panel__head">
                   <h2>Куда установить</h2>
                   <p className="settings-panel__desc">
-                    Выберите папку для Spotti Voice. По умолчанию — в вашем профиле, без прав администратора.
+                    Выберите папку для Spotti Voice. По умолчанию - в вашем профиле, без прав администратора.
                   </p>
                 </div>
                 <div className="setup-field">

@@ -163,7 +163,7 @@ async def _on_utterance(pcm: bytes) -> None:
             return
         if "whisper.cpp" in msg.lower() or "не установлен" in msg.lower():
             await _broadcast_error(
-                "Нет whisper.cpp. Перезапустите run.bat для установки.",
+                "Локальное распознавание ещё не готово. Откройте Настройки - Локально и дождитесь загрузки whisper.cpp.",
                 code="local_stt_missing",
             )
             return
@@ -327,7 +327,7 @@ async def cloud_status() -> dict[str, Any]:
     from voice_pill.engine.cloud_auth import (
         cloud_session,
         cloud_stt_ready,
-        cloud_user_label,
+        cloud_user_profile,
         warm_cloud_session,
     )
 
@@ -337,10 +337,13 @@ async def cloud_status() -> dict[str, Any]:
         await warm_cloud_session()
 
     still = cloud_session()
+    profile = cloud_user_profile() or {}
     return {
         "ready": cloud_stt_ready(),
         "signedIn": bool(still and still.get("refresh_token")),
-        "userLabel": cloud_user_label(),
+        "userLabel": profile.get("userLabel"),
+        "userId": profile.get("userId"),
+        "avatarUrl": profile.get("avatarUrl"),
     }
 
 
@@ -375,6 +378,23 @@ def cloud_auth_signout() -> dict[str, bool]:
     from voice_pill.engine.cloud_auth import sign_out
 
     sign_out()
+    return {"ok": True}
+
+
+@app.get("/api/whisper/install-status")
+def whisper_install_status_route() -> dict[str, Any]:
+    from voice_pill.engine.whisper_install_status import get_install_status
+
+    return get_install_status()
+
+
+@app.post("/api/whisper/install")
+def whisper_install_start_route() -> dict[str, Any]:
+    from voice_pill.engine.whisper_install_status import start_install
+
+    ok = start_install()
+    if not ok:
+        raise HTTPException(status_code=500, detail="whisper_install_failed")
     return {"ok": True}
 
 

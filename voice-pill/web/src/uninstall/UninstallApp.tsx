@@ -80,7 +80,7 @@ export function UninstallApp() {
                     <h2>Удалить Spotti Voice?</h2>
                     <p>
                       Будут удалены приложение, ярлыки и настройки. Голосовые модели whisper.cpp в
-                      %APPDATA%\SpottiVoice останутся — удалите вручную при необходимости.
+                      %APPDATA%\SpottiVoice останутся - удалите вручную при необходимости.
                     </p>
                   </div>
                 </header>

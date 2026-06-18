@@ -24,7 +24,7 @@ export function InjectPanel({ base, engineOnline }: InjectPanelProps) {
         setInjectTestMsg("Не удалось вставить. Кликните в поле ввода и повторите.");
       }
     } catch {
-      setInjectTestMsg("Тест вставки недоступен — движок офлайн.");
+      setInjectTestMsg("Тест вставки недоступен - движок офлайн.");
     } finally {
       setInjectTesting(false);
     }

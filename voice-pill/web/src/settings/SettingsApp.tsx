@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState, type ComponentType } from "react"
 import {
   Mic2,
   Loader2,
-  CheckCircle2,
   AlertCircle,
   HardDrive,
   History,
@@ -19,12 +18,11 @@ import {
   type VoiceSettings,
 } from "../lib/engineApi";
 import { LanguagePicker } from "./LanguagePicker";
-import { LanguageFlag } from "./LanguageFlag";
-import { languageFlagCountry } from "./voiceLanguages";
 import { CloudAuthPanel } from "./CloudAuthPanel";
 import { MicPanel } from "./MicPanel";
 import { HotkeyPanel } from "./HotkeyPanel";
 import { HistoryPanel } from "./HistoryPanel";
+import { LocalWhisperPanel } from "./LocalWhisperPanel";
 import { ModeSwitch, type SttMode } from "./ModeSwitch";
 import { SettingsTitleBar } from "./SettingsTitleBar";
 import "./settings.css";
@@ -35,7 +33,6 @@ const INJECT_DEFAULTS = {
   appendTrailingSpace: true,
 } as const;
 const AUTO_SAVE_MS = 200;
-const STATUS_CLEAR_MS = 2000;
 
 function settingsPayload(settings: VoiceSettings) {
   return {
@@ -64,7 +61,7 @@ type NavItem = {
 const NAV_ITEMS: NavItem[] = [
   { id: "mic", icon: Mic2, label: "Микрофон" },
   { id: "hotkey", icon: Keyboard, label: "Горячая клавиша" },
-  { id: "cloud", icon: Cloud, label: "Discord", cloudOnly: true },
+  { id: "cloud", icon: Cloud, label: "Облако", cloudOnly: true },
   { id: "language", icon: Languages, label: "Язык", cloudOnly: true },
   { id: "local", icon: HardDrive, label: "Локально", localOnly: true },
   { id: "history", icon: History, label: "История" },
@@ -105,27 +102,12 @@ function SidebarNav({
 }
 
 function SaveNotice({ message, kind }: { message: string; kind: "ok" | "err" | "" }) {
-  if (!message || !kind) return null;
-  const Icon = kind === "ok" ? CheckCircle2 : AlertCircle;
+  if (!message || kind !== "err") return null;
   return (
     <div className="settings-notice-stack" aria-live="polite">
-      <p className={`settings-notice settings-notice--${kind}`} role="status">
-        <Icon size={14} strokeWidth={2.25} aria-hidden />
+      <p className="settings-notice settings-notice--err" role="alert">
+        <AlertCircle size={14} strokeWidth={2.25} aria-hidden />
         <span>{message}</span>
-      </p>
-    </div>
-  );
-}
-
-function LocalLanguageLocked() {
-  return (
-    <div className="settings-local-hero">
-      <span className="settings-local-hero__badge">
-        <LanguageFlag country={languageFlagCountry("ru") ?? "RU"} className="settings-lang-chip__flag" />
-        <span>Русский</span>
-      </span>
-      <p className="settings-local-hero__note">
-        Локальный режим распознаёт только русский. Для других языков переключитесь на Облако.
       </p>
     </div>
   );
@@ -143,7 +125,6 @@ export function SettingsApp() {
   const hydratedRef = useRef(false);
   const lastSavedFingerprintRef = useRef<string | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const statusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const sttMode = settings?.sttMode ?? "local";
   const isCloud = sttMode === "cloud";
@@ -220,14 +201,8 @@ export function SettingsApp() {
             await window.spottiVoice?.reloadHotkey?.();
           }
 
-          setStatus("Сохранено");
-          setStatusKind("ok");
-
-          if (statusTimerRef.current) clearTimeout(statusTimerRef.current);
-          statusTimerRef.current = setTimeout(() => {
-            setStatus("");
-            setStatusKind("");
-          }, STATUS_CLEAR_MS);
+          setStatus("");
+          setStatusKind("");
         } catch {
           setStatus("Не удалось сохранить");
           setStatusKind("err");
@@ -243,7 +218,6 @@ export function SettingsApp() {
   useEffect(() => {
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-      if (statusTimerRef.current) clearTimeout(statusTimerRef.current);
     };
   }, []);
 
@@ -317,7 +291,7 @@ export function SettingsApp() {
                 <Cloud size={22} strokeWidth={2} aria-hidden />
               </div>
               <div>
-                <h2>Облако и Discord</h2>
+                <h2>Облако</h2>
                 <p>Вход через Discord для распознавания на сервере Spotti.</p>
               </div>
             </header>
@@ -358,7 +332,7 @@ export function SettingsApp() {
                 <p>Распознавание на компьютере без отправки аудио в сеть.</p>
               </div>
             </header>
-            <LocalLanguageLocked />
+            <LocalWhisperPanel base={base} />
           </div>
         );
       case "history":
@@ -370,7 +344,7 @@ export function SettingsApp() {
               </div>
               <div>
                 <h2>История</h2>
-                <p>Последние фразы — копирование, правка, удаление.</p>
+                <p>Последние фразы - копирование, правка, удаление.</p>
               </div>
             </header>
             <HistoryPanel base={base} engineOnline={engineOnline === true} />

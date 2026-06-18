@@ -1078,35 +1078,21 @@
 }
 
 .settings-btn--primary {
-  position: relative;
-  overflow: hidden;
-  color: oklch(0.98 0.01 278);
-  background: linear-gradient(
-    135deg,
-    oklch(0.68 0.21 276) 0%,
-    oklch(0.58 0.2 282) 50%,
-    oklch(0.52 0.18 290) 100%
-  );
-  box-shadow:
-    inset 0 1px 0 oklch(1 0 0 / 0.22),
-    inset 0 -2px 0 oklch(0.35 0.12 285 / 0.4),
-    0 12px 32px oklch(0.45 0.22 278 / 0.38);
+  color: oklch(0.99 0 0);
+  background: oklch(0.28 0.02 278);
+  border: 1px solid oklch(0.28 0.02 278);
+  box-shadow: none;
 }
 
 .settings-btn--primary::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, oklch(1 0 0 / 0.12) 0%, transparent 50%);
-  pointer-events: none;
+  display: none;
 }
 
 .settings-btn--primary:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow:
-    inset 0 1px 0 oklch(1 0 0 / 0.25),
-    inset 0 -2px 0 oklch(0.35 0.12 285 / 0.4),
-    0 16px 40px oklch(0.45 0.24 278 / 0.48);
+  transform: none;
+  background: oklch(0.32 0.02 278);
+  border-color: oklch(0.32 0.02 278);
+  box-shadow: 0 1px 2px rgb(18 18 24 / 0.12);
 }
 
 .settings-btn--secondary {
@@ -1122,7 +1108,7 @@
 
 .settings-btn--secondary:hover:not(:disabled) {
   background: var(--setup-surface-hover);
-  border-color: oklch(0.64 0.19 278 / 0.35);
+  border-color: var(--setup-border-strong);
 }
 
 .settings-btn--secondary.is-active {
@@ -1521,8 +1507,8 @@ html:has(.settings-app) body::-webkit-scrollbar {
 }
 
 .settings-app--figjam.settings-app--v2 {
-  --setup-accent: #5865f2;
-  --setup-accent-soft: rgb(88 101 242 / 0.1);
+  --setup-accent: oklch(0.42 0.02 278);
+  --setup-accent-soft: rgb(18 18 24 / 0.06);
 }
 
 .settings-app--v2 .settings-body {
@@ -1905,10 +1891,178 @@ html:has(.settings-app) body::-webkit-scrollbar {
 
 .settings-btn--danger:hover:not(:disabled) {
   background: #ffe4e6;
-  transform: translateY(-1px);
+  transform: none;
 }
 
 .settings-btn--danger:disabled {
   opacity: 0.55;
   cursor: wait;
+}
+
+.settings-btn--compact {
+  min-height: 40px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+
+.settings-btn--discord {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 18px;
+  font-size: 14px;
+  color: #fff;
+  background: #5865f2;
+  border: 1px solid #4752c4;
+  box-shadow: none;
+}
+
+.settings-btn--discord:hover:not(:disabled) {
+  transform: none;
+  background: #4752c4;
+}
+
+.settings-local-stack {
+  display: grid;
+  gap: 14px;
+}
+
+.settings-whisper-card {
+  padding: 16px 18px;
+  border-radius: 14px;
+  border: 1px solid var(--setup-border);
+  background: var(--setup-surface);
+  box-shadow: 0 1px 2px rgb(18 18 24 / 0.05);
+}
+
+.settings-whisper-card__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.settings-whisper-card__icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--setup-border);
+  background: var(--setup-surface-2);
+  color: var(--setup-text);
+  flex-shrink: 0;
+}
+
+.settings-whisper-card__title {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.settings-whisper-card__meta {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--setup-muted);
+}
+
+.settings-whisper-card__progress {
+  margin-top: 14px;
+  display: grid;
+  gap: 8px;
+}
+
+.settings-whisper-card__progress-track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--setup-surface-2);
+  border: 1px solid var(--setup-border);
+  overflow: hidden;
+}
+
+.settings-whisper-card__progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: oklch(0.42 0.02 278);
+  transition: width 0.35s ease-out;
+}
+
+.settings-whisper-card__progress-fill.is-active {
+  background: linear-gradient(90deg, oklch(0.42 0.02 278), oklch(0.52 0.03 278));
+}
+
+.settings-whisper-card__progress-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--setup-muted);
+}
+
+.settings-cloud-auth__profile {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 14px;
+  align-items: center;
+}
+
+.settings-cloud-auth__avatar-wrap {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+}
+
+.settings-cloud-auth__avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  object-fit: cover;
+  border: 1px solid var(--setup-border);
+  background: var(--setup-surface-2);
+}
+
+.settings-cloud-auth__avatar--fallback {
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--setup-text);
+}
+
+.settings-cloud-auth__avatar-badge {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid var(--setup-border);
+  color: var(--setup-success);
+}
+
+.settings-cloud-auth__profile-name {
+  margin: 0 0 4px;
+  font-size: 16px;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  color: var(--setup-text);
+}
+
+.settings-cloud-auth__profile-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 13px;
+  color: var(--setup-success);
+}
+
+.settings-cloud-auth__signout {
+  align-self: start;
 }

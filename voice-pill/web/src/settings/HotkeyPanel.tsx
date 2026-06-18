@@ -75,7 +75,7 @@ export function HotkeyPanel({
         </div>
         <div>
           <h2>Горячая клавиша</h2>
-          <p>Удерживайте сочетание, чтобы диктовать. F1–F12 — без Ctrl.</p>
+          <p>Удерживайте сочетание, чтобы диктовать. F1-F12 - без Ctrl.</p>
         </div>
       </header>
 
@@ -87,7 +87,7 @@ export function HotkeyPanel({
           className={`settings-hotkey-capture${capturing ? " is-capturing" : ""}`}
         >
           {capturing ? (
-            <p className="settings-hotkey-capture__prompt">Нажмите клавиши… Esc — отмена</p>
+            <p className="settings-hotkey-capture__prompt">Нажмите клавиши… Esc - отмена</p>
           ) : null}
           <button
             type="button"

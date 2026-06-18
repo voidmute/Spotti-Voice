@@ -5,7 +5,7 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageOps
 
 
 def resolve_source_png(voice_pill_root: Path) -> Path:
@@ -22,24 +22,59 @@ def resolve_source_png(voice_pill_root: Path) -> Path:
     )
 
 
+def invert_brand_logo(source: Image.Image) -> Image.Image:
+    rgba = source.convert("RGBA")
+    rgb = rgba.convert("RGB")
+    inverted = ImageOps.invert(rgb)
+    inv_rgba = inverted.convert("RGBA")
+    inv_rgba.putalpha(rgba.getchannel("A"))
+    return inv_rgba
+
+
 def sync_brand_png(source: Path, voice_pill_root: Path) -> None:
-    targets = [
-        voice_pill_root / "assets" / "app-icon.png",
+    white_logo = Image.open(source).convert("RGBA")
+    dark_logo = invert_brand_logo(white_logo)
+
+    white_targets = [
         voice_pill_root / "web" / "public" / "white-only.png",
-        voice_pill_root / "web" / "public" / "favicon.png",
+    ]
+    dark_targets = [
+        voice_pill_root / "web" / "public" / "brand-mark.png",
+        voice_pill_root / "installer" / "web" / "public" / "brand-mark.png",
+    ]
+    shared_targets = [
+        voice_pill_root / "assets" / "app-icon.png",
         voice_pill_root / "web" / "public" / "app-icon.png",
-        voice_pill_root / "installer" / "web" / "public" / "white-only.png",
-        voice_pill_root / "installer" / "web" / "public" / "favicon.png",
         voice_pill_root / "installer" / "web" / "public" / "app-icon.png",
     ]
-    for target in targets:
+    favicon_targets = [
+        voice_pill_root / "web" / "public" / "favicon.png",
+        voice_pill_root / "installer" / "web" / "public" / "favicon.png",
+    ]
+
+    for target in white_targets:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        white_logo.save(target)
+        print(f"Synced {target.relative_to(voice_pill_root)}")
+
+    for target in dark_targets:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        dark_logo.save(target)
+        print(f"Synced {target.relative_to(voice_pill_root)}")
+
+    for target in shared_targets:
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, target)
         print(f"Synced {target.relative_to(voice_pill_root)}")
 
+    for target in favicon_targets:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        white_logo.save(target)
+        print(f"Synced {target.relative_to(voice_pill_root)}")
+
 
 def build_ico_image(source: Image.Image, size: int) -> Image.Image:
-    """White logo on dark pad — reads clearly in Task Manager at 16–32px."""
+    """White logo on dark pad - reads clearly in Task Manager at 16-32px."""
     canvas = Image.new("RGBA", (size, size), (18, 18, 24, 255))
     working = source.copy()
     working.thumbnail((size, size), Image.Resampling.LANCZOS)
@@ -53,10 +88,10 @@ def main() -> None:
     source = resolve_source_png(voice_pill_root)
     sync_brand_png(source, voice_pill_root)
 
-    base = Image.open(source).convert("RGBA")
+    white_logo = Image.open(source).convert("RGBA")
     ico = voice_pill_root / "assets" / "app-icon.ico"
     sizes = [(256, 256), (128, 128), (64, 64), (48, 48), (32, 32), (16, 16)]
-    frames = [build_ico_image(base, s[0]) for s in sizes]
+    frames = [build_ico_image(white_logo, s[0]) for s in sizes]
     frames[0].save(ico, format="ICO", sizes=sizes, append_images=frames[1:])
     print(f"Wrote {ico}")
 

@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
-import { AlertCircle, CheckCircle2, Loader2, LogOut } from "lucide-react";
+import { AlertCircle, CheckCircle2, Loader2, LogOut, ShieldCheck } from "lucide-react";
 
 type CloudStatus = {
   ready: boolean;
   signedIn: boolean;
   userLabel: string | null;
+  userId?: string | null;
+  avatarUrl?: string | null;
 };
 
 type CloudSignInResult = { ok: boolean; error?: string };
@@ -146,52 +148,78 @@ export function CloudAuthPanel({ base }: { base: string }) {
 
   return (
     <section className="settings-cloud-auth" aria-label="Вход в облако Spotti">
-      <div className="settings-cloud-auth__head">
-        <p className="settings-cloud-auth__eyebrow">Облачное распознавание</p>
-        <h3 className="settings-cloud-auth__title">Аккаунт Spotti</h3>
-        {signedIn ? (
-          <p className="settings-cloud-auth__meta settings-cloud-auth__meta--ok">
-            <CheckCircle2 size={15} strokeWidth={2.25} aria-hidden />
-            <span>
-              {status?.userLabel ? `Вошли как ${status.userLabel}` : "Вход выполнен"}
-              {ready ? " · облако готово" : " · обновите сессию"}
+      {signedIn ? (
+        <div className="settings-cloud-auth__profile">
+          <div className="settings-cloud-auth__avatar-wrap">
+            {status?.avatarUrl ? (
+              <img
+                className="settings-cloud-auth__avatar"
+                src={status.avatarUrl}
+                alt=""
+                width={56}
+                height={56}
+              />
+            ) : (
+              <span className="settings-cloud-auth__avatar settings-cloud-auth__avatar--fallback" aria-hidden>
+                {(status?.userLabel || "?").slice(0, 1).toUpperCase()}
+              </span>
+            )}
+            <span className="settings-cloud-auth__avatar-badge" aria-hidden>
+              <ShieldCheck size={14} strokeWidth={2.25} />
             </span>
-          </p>
-        ) : (
-          <p className="settings-cloud-auth__meta">
-            Войдите через Discord — API-ключ не нужен. Окно входа откроется внутри
-            Spotti Voice.
-          </p>
-        )}
-      </div>
-
-      <div className="settings-cloud-auth__actions">
-        {signedIn ? (
+          </div>
+          <div className="settings-cloud-auth__profile-copy">
+            <p className="settings-cloud-auth__profile-name">
+              {status?.userLabel || "Аккаунт Discord"}
+            </p>
+            <p className="settings-cloud-auth__profile-meta">
+              {ready ? (
+                <>
+                  <CheckCircle2 size={14} strokeWidth={2.25} aria-hidden />
+                  <span>Облако готово</span>
+                </>
+              ) : (
+                <span>Сессия устарела - войдите снова</span>
+              )}
+            </p>
+          </div>
           <button
             type="button"
-            className="settings-cloud-auth__btn settings-cloud-auth__btn--ghost"
+            className="settings-btn settings-btn--ghost settings-btn--compact settings-cloud-auth__signout"
             onClick={() => void onSignOut()}
             disabled={busy}
           >
             {busy ? <Loader2 className="settings-loading__spin" size={16} /> : <LogOut size={16} />}
             <span>Выйти</span>
           </button>
-        ) : (
-          <button
-            type="button"
-            className="settings-cloud-auth__btn settings-cloud-auth__btn--discord"
-            onClick={() => void onSignIn()}
-            disabled={busy}
-          >
-            {busy ? (
-              <Loader2 className="settings-loading__spin" size={18} />
-            ) : (
-              <DiscordMark />
-            )}
-            <span>Войти через Discord</span>
-          </button>
-        )}
-      </div>
+        </div>
+      ) : (
+        <>
+          <div className="settings-cloud-auth__head">
+            <p className="settings-cloud-auth__eyebrow">Облачное распознавание</p>
+            <h3 className="settings-cloud-auth__title">Вход в Spotti Cloud</h3>
+            <p className="settings-cloud-auth__meta">
+              Войдите через Discord - API-ключ не нужен. Окно входа откроется внутри Spotti Voice.
+            </p>
+          </div>
+
+          <div className="settings-cloud-auth__actions">
+            <button
+              type="button"
+              className="settings-btn settings-btn--discord settings-cloud-auth__signin"
+              onClick={() => void onSignIn()}
+              disabled={busy}
+            >
+              {busy ? (
+                <Loader2 className="settings-loading__spin" size={18} />
+              ) : (
+                <DiscordMark />
+              )}
+              <span>Войти через Discord</span>
+            </button>
+          </div>
+        </>
+      )}
 
       {awaitingBrowser && !signedIn && !error ? (
         <p className="settings-cloud-auth__hint" role="status">

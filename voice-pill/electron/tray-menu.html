@@ -6,16 +6,16 @@
     <title>Spotti Voice</title>
     <style>
       :root {
-        color-scheme: dark;
+        color-scheme: light;
         font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
-        --bg: oklch(0.16 0.012 275);
-        --surface: oklch(0.22 0.016 275);
-        --surface-hover: oklch(0.25 0.018 275);
-        --text: oklch(0.94 0.01 275);
-        --muted: oklch(0.68 0.02 275);
-        --accent: oklch(0.58 0.19 275);
-        --border: oklch(1 0 0 / 0.1);
-        --danger: oklch(0.65 0.2 25);
+        --bg: #f7f7f8;
+        --surface: #ffffff;
+        --surface-hover: #f1f2f4;
+        --text: #121218;
+        --muted: #6b7280;
+        --border: rgb(18 18 24 / 0.1);
+        --danger: #dc2626;
+        --danger-soft: #fff1f2;
       }
 
       * {
@@ -37,19 +37,19 @@
         box-sizing: border-box;
         width: 100%;
         min-height: 100%;
-        padding: 6px 6px 10px;
-        border-radius: 12px;
-        background: var(--bg);
+        padding: 8px;
+        border-radius: 14px;
+        background: var(--surface);
         border: 1px solid var(--border);
         box-shadow:
-          0 12px 40px oklch(0 0 0 / 0.45),
-          0 0 0 1px oklch(1 0 0 / 0.04) inset;
+          0 16px 40px rgb(18 18 24 / 0.14),
+          0 0 0 1px rgb(255 255 255 / 0.7) inset;
         opacity: 0;
         transform: translateY(6px) scale(0.98);
       }
 
       .menu.is-shown {
-        animation: tray-menu-in 0.26s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        animation: tray-menu-in 0.22s cubic-bezier(0.22, 1, 0.36, 1) forwards;
       }
 
       @keyframes tray-menu-in {
@@ -76,18 +76,23 @@
         display: flex;
         align-items: center;
         gap: 10px;
-        padding: 10px 12px 8px;
-        color: var(--muted);
-        font-size: 11px;
-        font-weight: 600;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
+        padding: 8px 10px 10px;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 4px;
       }
 
       .menu-header img {
-        width: 24px;
-        height: 24px;
-        opacity: 0.95;
+        width: 22px;
+        height: 22px;
+        object-fit: contain;
+      }
+
+      .menu-header span {
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
       }
 
       button {
@@ -97,15 +102,15 @@
         margin: 0;
         padding: 10px 12px;
         border: none;
-        border-radius: 8px;
+        border-radius: 10px;
         background: transparent;
         color: var(--text);
         font: inherit;
         font-size: 13px;
-        font-weight: 500;
+        font-weight: 600;
         text-align: left;
         cursor: pointer;
-        transition: background 0.12s ease-out, color 0.12s ease-out;
+        transition: background 0.12s ease-out;
       }
 
       button:hover,
@@ -130,14 +135,14 @@
 
       button.danger:hover,
       button.danger:focus-visible {
-        background: oklch(0.65 0.2 25 / 0.12);
+        background: var(--danger-soft);
       }
     </style>
   </head>
   <body>
     <nav class="menu is-shown" role="menu" aria-label="Меню Spotti Voice">
       <div class="menu-header">
-        <img src="../web/dist/white-only.png" alt="" aria-hidden="true" />
+        <img src="../web/dist/brand-mark.png" alt="" aria-hidden="true" />
         <span>Spotti Voice</span>
       </div>
       <button type="button" data-action="show-pill">Показать виджет</button>
