@@ -57,7 +57,10 @@ export function CloudAuthGate({
   }, [open]);
 
   useEffect(() => {
-    const wv = webviewRef.current;
+    const wv = webviewRef.current as (HTMLElement & {
+      setZoomFactor?: (factor: number) => void;
+      insertCSS?: (css: string) => void;
+    }) | null;
     if (!wv || !authorizeUrl) return undefined;
 
     const onNavigate = (event: Event & { url?: string; preventDefault?: () => void }) => {
@@ -67,14 +70,25 @@ export function CloudAuthGate({
       void finishOAuth(url);
     };
 
+    const onDomReady = () => {
+      try {
+        wv.setZoomFactor?.(1);
+        wv.insertCSS?.("html,body{margin:0!important;padding:0!important;overflow:hidden!important;width:100%!important;height:100%!important;}");
+      } catch {
+        /* ignore */
+      }
+    };
+
     wv.addEventListener("will-navigate", onNavigate as EventListener);
     wv.addEventListener("did-navigate", onNavigate as EventListener);
     wv.addEventListener("did-navigate-in-page", onNavigate as EventListener);
+    wv.addEventListener("dom-ready", onDomReady as EventListener);
 
     return () => {
       wv.removeEventListener("will-navigate", onNavigate as EventListener);
       wv.removeEventListener("did-navigate", onNavigate as EventListener);
       wv.removeEventListener("did-navigate-in-page", onNavigate as EventListener);
+      wv.removeEventListener("dom-ready", onDomReady as EventListener);
     };
   }, [authorizeUrl]);
 
@@ -120,7 +134,7 @@ export function CloudAuthGate({
   return (
     <div className="cloud-gate" role="dialog" aria-modal="true" aria-labelledby="cloud-gate-title">
       <button type="button" className="cloud-gate__backdrop" aria-label="Закрыть" onClick={onClose} />
-      <div className="cloud-gate__card">
+      <div className={`cloud-gate__card${authorizeUrl ? " cloud-gate__card--oauth" : ""}`}>
         <button type="button" className="cloud-gate__close" aria-label="Закрыть" onClick={onClose}>
           <X size={18} strokeWidth={2.25} />
         </button>

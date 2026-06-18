@@ -1,23 +1,18 @@
-import { type ReactNode } from "react";
 import { Minus, X } from "lucide-react";
+import type { UiTheme } from "./ThemeToggle";
 
-type SettingsTitleBarProps = {
-  modeSwitch?: ReactNode;
-};
+export function SettingsTitleBar({ theme }: { theme: UiTheme }) {
+  const logoSrc = theme === "dark" ? "./white-only.png" : "./brand-mark.png";
 
-export function SettingsTitleBar({ modeSwitch }: SettingsTitleBarProps) {
   return (
     <header className="settings-titlebar">
-      <div className="settings-titlebar__drag" aria-hidden />
       <div className="settings-titlebar__brand">
-        <img className="settings-titlebar__logo" src="./brand-mark.png" alt="" />
+        <img className="settings-titlebar__logo" src={logoSrc} alt="" />
         <div className="settings-titlebar__titles">
           <span className="settings-titlebar__name">Spotti Voice</span>
           <span className="settings-titlebar__subtitle">Настройки</span>
         </div>
       </div>
-
-      <div className="settings-titlebar__center">{modeSwitch}</div>
 
       <div className="settings-titlebar__controls">
         <button

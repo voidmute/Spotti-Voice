@@ -1733,6 +1733,14 @@ ipcMain.handle("voice:window-close", (event) => {
   return true;
 });
 
+ipcMain.handle("voice:set-ui-theme", (event, theme) => {
+  if (!isTrustedSender(event)) throw new Error("Untrusted IPC sender");
+  if (theme !== "light" && theme !== "dark") throw new Error("Invalid UI theme");
+  const win = settingsWindowFromEvent(event);
+  win.setBackgroundColor(theme === "dark" ? "#0c0c0d" : "#f4f2ee");
+  return true;
+});
+
 ipcMain.handle("voice:open-settings", (event) => {
   if (!isTrustedSender(event)) throw new Error("Untrusted IPC sender");
   void createSettings();

@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld("spottiVoice", {
     ipcRenderer.invoke("voice:overlay-size", { width, height }),
   minimizeWindow: () => ipcRenderer.invoke("voice:window-minimize"),
   closeWindow: () => ipcRenderer.invoke("voice:window-close"),
+  setUiTheme: (theme) => ipcRenderer.invoke("voice:set-ui-theme", theme),
   reloadHotkey: () => ipcRenderer.invoke("voice:reload-hotkey"),
   setHotkeyCapture: (enabled) => ipcRenderer.invoke("voice:set-hotkey-capture", enabled),
       cloudSignIn: () => ipcRenderer.invoke("voice:cloud-sign-in"),

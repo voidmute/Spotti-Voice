@@ -7,6 +7,7 @@ type ModeSwitchProps = {
   value: SttMode;
   onChange: (mode: SttMode) => void;
   disabled?: boolean;
+  className?: string;
 };
 
 const SEGMENTS: { id: SttMode; label: string; icon: typeof Cloud }[] = [
@@ -14,7 +15,7 @@ const SEGMENTS: { id: SttMode; label: string; icon: typeof Cloud }[] = [
   { id: "local", label: "Локально", icon: HardDrive },
 ];
 
-export function ModeSwitch({ value, onChange, disabled }: ModeSwitchProps) {
+export function ModeSwitch({ value, onChange, disabled, className }: ModeSwitchProps) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [hover, setHover] = useState<SttMode | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -65,7 +66,7 @@ export function ModeSwitch({ value, onChange, disabled }: ModeSwitchProps) {
   return (
     <div
       ref={trackRef}
-      className={`mode-switch${disabled ? " is-disabled" : ""}${dragging ? " is-dragging" : ""}`}
+      className={`mode-switch${className ? ` ${className}` : ""}${disabled ? " is-disabled" : ""}${dragging ? " is-dragging" : ""}`}
       role="group"
       aria-label="Режим распознавания"
       onPointerDown={onPointerDown}

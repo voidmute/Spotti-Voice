@@ -51,10 +51,10 @@ type NavItem = {
 };
 
 const NAV_ITEMS: NavItem[] = [
-  { id: "mic", icon: Mic2, label: "Микрофон" },
-  { id: "hotkey", icon: Keyboard, label: "Горячая клавиша" },
   { id: "account", icon: User, label: "Аккаунт" },
   { id: "history", icon: History, label: "История" },
+  { id: "hotkey", icon: Keyboard, label: "Горячая клавиша" },
+  { id: "mic", icon: Mic2, label: "Микрофон" },
 ];
 
 function SidebarNav({
@@ -106,7 +106,7 @@ function SaveNotice({ message, kind }: { message: string; kind: "ok" | "err" | "
 export function SettingsApp() {
   const [base, setBase] = useState("http://127.0.0.1:9777");
   const [settings, setSettings] = useState<VoiceSettings | null>(null);
-  const [section, setSection] = useState<SettingsSection>("mic");
+  const [section, setSection] = useState<SettingsSection>("account");
   const [status, setStatus] = useState("");
   const [statusKind, setStatusKind] = useState<"ok" | "err" | "">("");
   const [engineOnline, setEngineOnline] = useState<boolean | null>(null);
@@ -126,6 +126,7 @@ export function SettingsApp() {
 
   useEffect(() => {
     persistTheme(theme);
+    void window.spottiVoice?.setUiTheme?.(theme);
   }, [theme]);
 
   useEffect(() => {
@@ -233,8 +234,8 @@ export function SettingsApp() {
 
   useEffect(() => {
     if (!CORE_SECTIONS.has(section)) {
-      setSection("mic");
-      if (settings) setSettings({ ...settings, settingsSection: "mic" });
+      setSection("account");
+      if (settings) setSettings({ ...settings, settingsSection: "account" });
     }
   }, [section, settings]);
 
@@ -321,19 +322,22 @@ export function SettingsApp() {
       className={`settings-app settings-app--v2 settings-app--figjam${authGateOpen ? " is-auth-gate" : ""}`}
       data-theme={theme}
     >
-      <SettingsTitleBar
-        modeSwitch={
-          settings ? (
-            <ModeSwitch value={sttMode} onChange={(mode) => void onModeChange(mode)} disabled={engineOnline !== true} />
-          ) : null
-        }
-      />
+      <SettingsTitleBar theme={theme} />
 
       <div className="settings-body">
         <aside className="settings-sidebar">
           {settings ? (
             <>
               <SidebarNav value={section} items={visibleNav} onChange={onSectionChange} />
+              <div className="settings-sidebar-mode">
+                <span className="settings-sidebar-mode__label">Режим</span>
+                <ModeSwitch
+                  className="mode-switch--sidebar"
+                  value={sttMode}
+                  onChange={(mode) => void onModeChange(mode)}
+                  disabled={engineOnline !== true}
+                />
+              </div>
               <ThemeToggle value={theme} onChange={setTheme} />
             </>
           ) : (

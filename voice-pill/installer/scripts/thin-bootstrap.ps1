@@ -198,10 +198,12 @@ function Test-RuntimeCacheValid {
 
 function Show-BootstrapSplash {
     param([string]$PluginDir)
-    $hta = Join-Path $PluginDir "bootstrap-splash.hta"
-    if (-not (Test-Path -LiteralPath $hta)) { return $null }
+    $ps1 = Join-Path $PluginDir "bootstrap-splash.ps1"
+    if (-not (Test-Path -LiteralPath $ps1)) { return $null }
     try {
-        return Start-Process -FilePath "mshta.exe" -ArgumentList "`"$hta`"" -PassThru
+        return Start-Process -FilePath "powershell.exe" `
+            -ArgumentList "-STA -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$ps1`"" `
+            -PassThru
     } catch {
         return $null
     }
@@ -215,7 +217,7 @@ function Hide-BootstrapSplash {
             Stop-Process -Id $SplashProc.Id -Force -ErrorAction SilentlyContinue
         }
     } catch {
-        Get-Process mshta -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+        # ignore
     }
 }
 

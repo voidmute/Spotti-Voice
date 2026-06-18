@@ -37,7 +37,7 @@ export function normalizeSettingsSection(value: unknown): SettingsSection {
   if (raw === "cloud") return "account";
   if (raw === "language" || raw === "local") return "mic";
   if (SETTINGS_SECTIONS.has(raw as SettingsSection)) return raw as SettingsSection;
-  return "mic";
+  return "account";
 }
 
 export type TranscriptEntry = {
@@ -217,6 +217,7 @@ declare global {
       setOverlaySize?: (width: number, height: number) => Promise<boolean>;
       minimizeWindow?: () => Promise<boolean>;
       closeWindow?: () => Promise<boolean>;
+      setUiTheme?: (theme: "light" | "dark") => Promise<boolean>;
       reloadHotkey?: () => Promise<boolean>;
       setHotkeyCapture?: (enabled: boolean) => Promise<boolean>;
       cloudSignIn?: () => Promise<{ ok: boolean; error?: string }>;
