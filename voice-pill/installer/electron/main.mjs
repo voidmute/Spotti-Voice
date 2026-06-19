@@ -742,9 +742,10 @@ ipcMain.handle("setup:install", async (event, rawOptions) => {
       const electronDir = path.join(installDir, "electron");
       if (await pathExists(exe)) {
         spawn(exe, [electronDir], { detached: true, stdio: "ignore" }).unref();
-        dismissInstallerSiblings(installDir);
       }
     }
+
+    dismissInstallerSiblings(installDir);
 
     setTimeout(() => {
       dismissInstallerSiblings(installDir);

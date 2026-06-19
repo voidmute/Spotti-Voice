@@ -244,6 +244,53 @@ function Show-BootstrapSplash {
     }
 }
 
+function Stop-BootstrapInstallerProcesses {
+    $selfPid = $PID
+    $stubPath = Join-Path $env:TEMP "SpottiVoice\stub\SpottiVoice-Setup.exe"
+
+    Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | ForEach-Object {
+        $id = [int]$_.ProcessId
+        if ($id -le 0 -or $id -eq $selfPid) { return }
+        $name = [string]$_.Name
+        $cmd = [string]$_.CommandLine
+        if ($name -ieq "SpottiVoice-Setup.exe") {
+            Stop-Process -Id $id -Force -ErrorAction SilentlyContinue
+            return
+        }
+        if ($name -ieq "wscript.exe" -and $cmd -match "run-bootstrap-hidden|bootstrap-splash-launch") {
+            Stop-Process -Id $id -Force -ErrorAction SilentlyContinue
+            return
+        }
+        if ($name -ieq "powershell.exe" -and $cmd -match "bootstrap-splash\.ps1") {
+            Stop-Process -Id $id -Force -ErrorAction SilentlyContinue
+            return
+        }
+        if ($name -ieq "mshta.exe" -and $cmd -match "bootstrap-splash\.hta") {
+            Stop-Process -Id $id -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    try {
+        $walker = Get-CimInstance Win32_Process -Filter "ProcessId=$selfPid" -ErrorAction Stop
+        $parentId = [int]$walker.ParentProcessId
+        for ($depth = 0; $depth -lt 8 -and $parentId -gt 0; $depth++) {
+            $parent = Get-CimInstance Win32_Process -Filter "ProcessId=$parentId" -ErrorAction SilentlyContinue
+            if (-not $parent) { break }
+            if ([string]$parent.Name -ieq "SpottiVoice-Setup.exe") {
+                Stop-Process -Id $parentId -Force -ErrorAction SilentlyContinue
+                break
+            }
+            $parentId = [int]$parent.ParentProcessId
+        }
+    } catch {
+        # ignore
+    }
+
+    if (Test-Path -LiteralPath $stubPath) {
+        Remove-Item -LiteralPath $stubPath -Force -ErrorAction SilentlyContinue
+    }
+}
+
 function Clear-BootstrapSplash {
     $pidPath = Join-Path $env:TEMP "SpottiVoice-splash.pid"
     $stopPath = Join-Path $env:TEMP "SpottiVoice-splash.stop"
@@ -441,9 +488,12 @@ try {
     if ($proc.ExitCode -eq 0) {
         Remove-StaleInstallerArtifacts -KeepVersion $version -PurgeCurrentCache
     }
-    exit $proc.ExitCode
+    $exitCode = $proc.ExitCode
+    Stop-BootstrapInstallerProcesses
+    exit $exitCode
 } catch {
     Clear-BootstrapSplash
+    Stop-BootstrapInstallerProcesses
     $detail = $_.Exception.Message
     Write-Log "bootstrap error: $detail"
     $msg = if ($detail -match "checksum_mismatch") {
