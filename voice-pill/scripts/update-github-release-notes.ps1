@@ -17,7 +17,7 @@ if (-not (Test-Path -LiteralPath $ChangelogPath)) {
     Write-Error "Missing changelog: $ChangelogPath"
 }
 
-$raw = Get-Content -LiteralPath $ChangelogPath -Raw -Encoding UTF8
+$raw = [System.IO.File]::ReadAllText($ChangelogPath, [System.Text.UTF8Encoding]::new($false))
 $sections = [ordered]@{}
 
 $matches = [regex]::Matches($raw, '(?ms)^## (v[\d.]+)\r?\n\r?\n(.*?)(?=^## v|\z)')
@@ -31,25 +31,24 @@ if ($sections.Count -eq 0) {
     Write-Error "No version sections found in CHANGELOG"
 }
 
+$utf8NoBom = [System.Text.UTF8Encoding]::new($false)
+
 foreach ($ver in $sections.Keys) {
-    $tag = $ver
     $notes = @(
-        "# $tag",
-        "",
         $sections[$ver],
         "",
-        "Скачать: ``SpottiVoice-Setup.exe`` + ``SpottiVoice-Setup.sha256``",
+        "**Files:** ``SpottiVoice-Setup.exe`` + ``SpottiVoice-Setup.sha256``",
         "",
-        "[Полный changelog](https://github.com/$Repo/blob/main/CHANGELOG.md)"
+        "[Full changelog](https://github.com/$Repo/blob/main/CHANGELOG.md)"
     ) -join "`n"
 
-    $tmp = Join-Path $env:TEMP "spotti-release-$tag.md"
-    Set-Content -LiteralPath $tmp -Value $notes -Encoding UTF8 -NoNewline
+    $tmp = Join-Path $env:TEMP "spotti-release-$ver.md"
+    [System.IO.File]::WriteAllText($tmp, $notes, $utf8NoBom)
 
-    Write-Host "Updating $tag ..."
-    gh release edit $tag --repo $Repo --notes-file $tmp
+    Write-Host "Updating $ver ..."
+    gh release edit $ver --repo $Repo --notes-file $tmp
     if ($LASTEXITCODE -ne 0) {
-        Write-Warning "Failed: $tag (release may not exist)"
+        Write-Warning "Failed: $ver (release may not exist)"
     }
     Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue
 }
