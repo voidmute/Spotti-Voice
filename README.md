@@ -1,8 +1,11 @@
 <div align="center">
-    <img width="220" src="./assets/brand-mark.png" alt="Spotti Voice"/>
-    <br/>
-    <br/>
-    <a href="https://git.io/typing-svg"><img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=28&duration=2800&pause=2500&color=5865F2&center=true&repeat=false&width=620&height=56&lines=Говори+%E2%80%94+текст+в+любом+окне!;Push-to-talk+для+Windows;Spotti+Voice" alt="Typing SVG"/></a>
+    <img width="200" src="./assets/spotti-mascot.png" alt="Спотти — голосовой помощник"/>
+    <h1>Spotti Voice</h1>
+    <p>
+        <strong>Говори — текст в любом окне</strong><br/>
+        Push-to-talk для Windows
+    </p>
+    <sub>При первом запуске Спотти проведёт короткое обучение на русском</sub>
 </div>
 
 <div align="center">
@@ -16,12 +19,6 @@
     <a href="CONTRIBUTING.md"><img src="https://img.shields.io/badge/Contributing-гайд-cba6f7?style=for-the-badge" alt="Contributing"/></a>
     <br/>
     <a href="https://spottibot.duckdns.org"><img src="https://img.shields.io/badge/Cloud-Spotti%20Servers-5865F2?style=for-the-badge" alt="Spotti Servers"/></a>
-</div>
-
-<div align="center">
-    <img width="180" src="./assets/spotti-mascot.png" alt="Спотти — пиксельный помощник"/>
-    <br/>
-    <sub>При первом запуске Спотти проведёт короткое обучение на русском</sub>
 </div>
 
 ---
