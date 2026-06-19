@@ -22,19 +22,21 @@
     height: 100%;
     overflow: hidden;
     background: transparent;
+    cursor: none;
   }
   .spinner {
     position: absolute;
     left: 50%;
     top: 50%;
-    width: 26px;
-    height: 26px;
-    margin: -13px 0 0 -13px;
+    width: 28px;
+    height: 28px;
+    margin: -14px 0 0 -14px;
     border-radius: 50%;
-    border: 2.5px solid rgba(255, 255, 255, 0.18);
+    border: 3px solid rgba(255, 255, 255, 0.2);
     border-top-color: #ffffff;
     box-sizing: border-box;
     animation: spin 0.85s linear infinite;
+    pointer-events: none;
   }
   @keyframes spin {
     to { transform: rotate(360deg); }
@@ -42,10 +44,19 @@
 </style>
 <script>
 (function () {
-  var w = 40;
-  var h = 40;
+  var w = 44;
+  var h = 44;
   resizeTo(w, h);
   moveTo(Math.round((screen.width - w) / 2), Math.round((screen.height - h) / 2));
+
+  try {
+    document.body.unselectable = "on";
+    document.body.onselectstart = function () { return false; };
+    document.body.oncontextmenu = function () { return false; };
+    if (document.body.setAttribute) {
+      document.body.setAttribute("unselectable", "on");
+    }
+  } catch (e) {}
 
   var shell = new ActiveXObject("WScript.Shell");
   var env = shell.Environment("PROCESS");
@@ -76,7 +87,7 @@
 })();
 </script>
 </head>
-<body>
+<body tabindex="-1">
   <div class="spinner" aria-hidden="true"></div>
 </body>
 </html>

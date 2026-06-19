@@ -199,17 +199,13 @@ function Test-RuntimeCacheValid {
 function Show-BootstrapSplash {
     param([string]$PluginDir)
     $hta = Join-Path $PluginDir "bootstrap-splash.hta"
-    $vbs = Join-Path $PluginDir "bootstrap-splash-launch.vbs"
     if (-not (Test-Path -LiteralPath $hta)) { return $false }
-    if (-not (Test-Path -LiteralPath $vbs)) { return $false }
     try {
         Clear-BootstrapSplash
         Start-Sleep -Milliseconds 200
         $env:SPOTTI_SPLASH_OWNER = "$PID"
-        $null = Start-Process -FilePath "wscript.exe" `
-            -ArgumentList "//B //Nologo `"$vbs`" `"$hta`"" `
-            -WindowStyle Hidden `
-            -PassThru
+        $mshta = Join-Path $env:SystemRoot "System32\mshta.exe"
+        $null = Start-Process -FilePath $mshta -ArgumentList "`"$hta`""
         return $true
     } catch {
         return $false
@@ -342,6 +338,7 @@ try {
     Enable-Tls12
     Write-Log "bootstrap start pluginDir=$PluginDir"
     Clear-BootstrapSplash
+    Show-BootstrapSplash -PluginDir $PluginDir | Out-Null
 
     $stubPath = Join-Path $PluginDir "bootstrap-manifest.json"
     if (-not (Test-Path -LiteralPath $stubPath)) {
@@ -357,8 +354,6 @@ try {
     if (-not $version) { throw "manifest version missing" }
 
     Remove-StaleInstallerArtifacts -KeepVersion $version
-
-    Show-BootstrapSplash -PluginDir $PluginDir | Out-Null
 
     $cacheRoot = Join-Path $env:LOCALAPPDATA "SpottiVoice\installer-cache\$version"
     $setupUiDir = Join-Path $cacheRoot "setup-ui"
