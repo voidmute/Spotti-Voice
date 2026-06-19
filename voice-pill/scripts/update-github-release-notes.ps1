@@ -1,9 +1,9 @@
 # Update GitHub release notes from CHANGELOG sections.
-# Usage: .\voice-pill\scripts\update-github-release-notes.ps1 [-Repo voidmute/Spotti-Voice] [-LatestVersion v0.1.0.19]
+# Usage: .\voice-pill\scripts\update-github-release-notes.ps1 [-Repo voidmute/Spotti-Voice] [-LatestVersion v0.1.0.20]
 
 param(
     [string]$Repo = "voidmute/Spotti-Voice",
-    [string]$LatestVersion = "v0.1.0.19",
+    [string]$LatestVersion = "v0.1.0.20",
     [string]$ChangelogPath = ""
 )
 
@@ -40,7 +40,7 @@ $latestUrl = "https://github.com/$Repo/releases/tag/$LatestVersion"
 $changelogUrl = "https://github.com/$Repo/blob/main/CHANGELOG.md"
 
 function Format-ReleaseNotes {
-    param([string]$Version, [string]$Body, [bool]$IsLatest)
+    param([string]$Version, [string]$ReleaseTag, [string]$Body, [bool]$IsLatest)
 
     if ($IsLatest) {
         $badge = "![Current](https://img.shields.io/badge/status-current-22c55e?style=flat-square)"
@@ -50,25 +50,44 @@ function Format-ReleaseNotes {
         $banner = "> **Deprecated** - do not use for new installs. Download [$LatestVersion]($latestUrl) instead."
     }
 
-    $dlUrl = "https://github.com/$Repo/releases/download/$Version/SpottiVoice-Setup.exe"
+    $dlUrl = "https://github.com/$Repo/releases/download/$ReleaseTag/SpottiVoice-Setup.exe"
     $notes = $badge + "`n`n" + $banner + "`n`n" + $Body + "`n`n"
     $notes += "**Files:** ``SpottiVoice-Setup.exe`` ([download]($dlUrl)) + ``SpottiVoice-Setup.sha256```n`n"
     $notes += "[Full changelog]($changelogUrl)"
     return $notes
 }
 
-foreach ($ver in $sections.Keys) {
+function Get-SemVer([string]$Tag) {
+    $normalized = $Tag.TrimStart('v') -replace '^(\d+\.\d+\.\d+)\.0(\d)$', '$1.$2'
+    return [version]$normalized
+}
+
+# GitHub web sorts tag names lexicographically (v0.1.0.9 > v0.1.0.18). Use padded tags on GitHub.
+function Get-GitHubReleaseTag([string]$Version) {
+    if ($Version -match '^v0\.1\.0\.(\d)$') {
+        return "v0.1.0.0$($matches[1])"
+    }
+    return $Version
+}
+
+# GitHub lists releases by published_at (newest edit first). Edit OLDEST first so v0.1.0.19
+# is touched last and stays on top; v0.1.0.10 above v0.1.0.09 above v0.1.0.08, etc.
+$orderedVersions = @($sections.Keys | Sort-Object { Get-SemVer $_ })
+
+foreach ($ver in $orderedVersions) {
+    $releaseTag = Get-GitHubReleaseTag $ver
     $isLatest = ($ver -eq $LatestVersion)
-    $notes = Format-ReleaseNotes -Version $ver -Body $sections[$ver] -IsLatest $isLatest
+    $notes = Format-ReleaseNotes -Version $ver -ReleaseTag $releaseTag -Body $sections[$ver] -IsLatest $isLatest
 
     $tmp = Join-Path $env:TEMP "spotti-release-$ver.md"
     [System.IO.File]::WriteAllText($tmp, $notes, $utf8NoBom)
 
-    Write-Host "Updating $ver (latest=$isLatest) ..."
+    $label = if ($releaseTag -ne $ver) { "$ver -> $releaseTag" } else { $ver }
+    Write-Host "Updating $label (latest=$isLatest) ..."
     if ($isLatest) {
-        gh release edit $ver --repo $Repo --notes-file $tmp --latest --prerelease=false
+        gh release edit $releaseTag --repo $Repo --notes-file $tmp --latest --prerelease=false
     } else {
-        gh release edit $ver --repo $Repo --notes-file $tmp --prerelease
+        gh release edit $releaseTag --repo $Repo --notes-file $tmp --prerelease
     }
     if ($LASTEXITCODE -ne 0) {
         Write-Warning "Failed: $ver"

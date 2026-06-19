@@ -18,6 +18,8 @@ Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | ForEach-Object {
     if ($name -ieq "wscript.exe" -and $cmd -match "run-bootstrap-hidden|bootstrap-splash-launch") { Stop-Proc $id; return }
 }
 
+& taskkill.exe /F /IM SpottiVoice-Setup.exe 2>$null | Out-Null
+
 Remove-Item -LiteralPath (Join-Path $env:TEMP "SpottiVoice-splash.pid") -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath (Join-Path $env:TEMP "SpottiVoice-splash.stop") -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath (Join-Path $env:TEMP "SpottiVoice\stub\SpottiVoice-Setup.exe") -Force -ErrorAction SilentlyContinue

@@ -4,35 +4,45 @@
 
 **Spotti Voice** — история релизов установщика и приложения.
 
-[![Latest](https://img.shields.io/badge/latest-v0.1.0.19-22c55e?style=flat-square)](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.19)
-[![Releases](https://img.shields.io/badge/all%20releases-20-5865F2?style=flat-square)](https://github.com/voidmute/Spotti-Voice/releases)
+[![Latest](https://img.shields.io/badge/latest-v0.1.0.20-22c55e?style=flat-square)](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.20)
+[![Releases](https://img.shields.io/badge/all%20releases-21-5865F2?style=flat-square)](https://github.com/voidmute/Spotti-Voice/releases)
 
-[Скачать v0.1.0.19](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.19) · [Releases](https://github.com/voidmute/Spotti-Voice/releases)
+[Скачать v0.1.0.20](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.20) · [Releases](https://github.com/voidmute/Spotti-Voice/releases)
 
 </div>
 
 ---
 
-> **Актуальная версия:** [v0.1.0.19](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.19)  
+> **Актуальная версия:** [v0.1.0.20](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.20)  
 > Все версии ниже **deprecated** — не используйте для новых установок.
 
 | Версия | Статус | Кратко |
 |--------|--------|--------|
-| [v0.1.0.19](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.19) | **Current** | Installer закрывается после setup |
-| v0.1.0.18 – v0.1.0.0 | Deprecated | Старые сборки bootstrap / UI |
+| [v0.1.0.20](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.20) | **Current** | Installer stub закрывается после setup |
+| v0.1.0.19 – v0.1.0.0 | Deprecated | Старые сборки bootstrap / UI |
 
 <details>
-<summary><strong>Почему v0.1.0.9 выше v0.1.0.19 в списке GitHub?</strong></summary>
+<summary><strong>Почему теги v0.1.0.08 / v0.1.0.09 вместо v0.1.0.8 / v0.1.0.9?</strong></summary>
 
-GitHub сортирует теги **как строки**, не как числа. В текстовом порядке `v0.1.0.9` &gt; `v0.1.0.19`, потому что `9` &gt; `1`. Поэтому старые однозначные патчи могут «всплывать» выше. Актуальность определяйте по бейджу **Latest** и этой таблице, не по позиции в списке.
+GitHub сортирует теги **как строки**, не как числа (`v0.1.0.9` &gt; `v0.1.0.18`). Релизы с патчем 0–9 переименованы в zero-padded теги (`v0.1.0.08`, `v0.1.0.09`, …), чтобы список шёл 20 → 19 → … → 10 → 09 → 08. Актуальная версия — по бейджу **Latest**.
 
 </details>
 
 ---
 
-## v0.1.0.19 · Current
+## v0.1.0.20 · Current
 
-[![Download](https://img.shields.io/badge/SpottiVoice--Setup.exe-download-5865F2?style=flat-square)](https://github.com/voidmute/Spotti-Voice/releases/download/v0.1.0.19/SpottiVoice-Setup.exe)
+[![Download](https://img.shields.io/badge/SpottiVoice--Setup.exe-download-5865F2?style=flat-square)](https://github.com/voidmute/Spotti-Voice/releases/download/v0.1.0.20/SpottiVoice-Setup.exe)
+
+- **Spotti Voice Installer** (NSIS stub) закрывается после успешной установки — больше не висит в диспетчере задач
+- Bootstrap: сначала завершает stub, purge кэша — detached (не блокирует выход)
+- Setup wizard: inline cleanup + повтор через 2.5 с; NSIS safety-net kill после bootstrap
+
+---
+
+## v0.1.0.19 · Deprecated
+
+> Не скачивайте — используйте [v0.1.0.20](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.20)
 
 - После завершения установки **Spotti Voice Installer** больше не остаётся в диспетчере задач
 - Bootstrap принудительно завершает `SpottiVoice-Setup.exe`, wscript и splash
@@ -42,7 +52,7 @@ GitHub сортирует теги **как строки**, не как числ
 
 ## v0.1.0.18 · Deprecated
 
-> Не скачивайте — используйте [v0.1.0.19](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.19)
+> Не скачивайте — используйте [v0.1.0.20](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.20)
 
 - Исправлено смещение белой дуги спиннера при вращении (Canvas + Viewbox)
 - Убрана вспышка окна PowerShell — запуск splash через скрытый wscript
@@ -52,7 +62,7 @@ GitHub сортирует теги **как строки**, не как числ
 
 ## v0.1.0.17 · Deprecated
 
-> Не скачивайте — используйте [v0.1.0.19](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.19)
+> Не скачивайте — используйте [v0.1.0.20](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.20)
 
 - UAC: установщик и мастер setup снова запрашивают права администратора
 - Спиннер: возврат к WPF (прозрачное кольцо по центру экрана)
@@ -62,7 +72,7 @@ GitHub сортирует теги **как строки**, не как числ
 
 ## v0.1.0.16 · Deprecated
 
-> Не скачивайте — используйте [v0.1.0.19](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.19)
+> Не скачивайте — используйте [v0.1.0.20](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.20)
 
 - Спиннер: прозрачное WinForms-окно без рамки, double-buffer (без дрожания)
 - Терминология: VPS → Server в документации и скриптах
@@ -71,7 +81,7 @@ GitHub сортирует теги **как строки**, не как числ
 
 ## v0.1.0.15 · Deprecated
 
-> Не скачивайте — используйте [v0.1.0.19](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.19)
+> Не скачивайте — используйте [v0.1.0.20](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.20)
 
 - Спиннер: WinForms вместо HTA (мигающий курсор вместо анимации)
 - Скрытие консольного caret в bootstrap
@@ -81,7 +91,7 @@ GitHub сортирует теги **как строки**, не как числ
 
 ## v0.1.0.14 · Deprecated
 
-> Не скачивайте — используйте [v0.1.0.19](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.19)
+> Не скачивайте — используйте [v0.1.0.20](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.20)
 
 - Замена HTA на WPF-спиннер (HTA показывал мигающий текстовый курсор)
 - Splash сразу при старте bootstrap, не после загрузки manifest
@@ -91,7 +101,7 @@ GitHub сортирует теги **как строки**, не как числ
 
 ## v0.1.0.13 · Deprecated
 
-> Не скачивайте — используйте [v0.1.0.19](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.19)
+> Не скачивайте — используйте [v0.1.0.20](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.20)
 
 - Видимый mshta-спиннер (раньше window style 0 — только мигающий caret)
 - Splash в начале bootstrap, не после fetch manifest
@@ -100,7 +110,7 @@ GitHub сортирует теги **как строки**, не как числ
 
 ## v0.1.0.12 · Deprecated
 
-> Не скачивайте — используйте [v0.1.0.19](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.19)
+> Не скачивайте — используйте [v0.1.0.20](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.20)
 
 - Завершение installer/bootstrap-процессов при старте приложения
 - Relaunch stub из `%TEMP%` (обход блокировки файла в Downloads)
@@ -111,7 +121,7 @@ GitHub сортирует теги **как строки**, не как числ
 
 ## v0.1.0.11 · Deprecated
 
-> Не скачивайте — используйте [v0.1.0.19](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.19)
+> Не скачивайте — используйте [v0.1.0.20](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.20)
 
 - HTA + CSS `@keyframes` спиннер (вместо WPF ghost rings)
 - `SINGLEINSTANCE` — один splash
@@ -120,7 +130,7 @@ GitHub сортирует теги **как строки**, не как числ
 
 ## v0.1.0.10 · Deprecated
 
-> Не скачивайте — используйте [v0.1.0.19](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.19)
+> Не скачивайте — используйте [v0.1.0.20](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.20)
 
 - Очистка splash при старте/ошибке/выходе
 - Автоудаление старых `installer-cache` версий
@@ -130,7 +140,7 @@ GitHub сортирует теги **как строки**, не как числ
 
 ## v0.1.0.9 · Deprecated
 
-> Не скачивайте — используйте [v0.1.0.19](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.19)
+> Не скачивайте — используйте [v0.1.0.20](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.20)
 
 - Анимированный loader при bootstrap
 - `dismiss-installer-processes` — убийство зависших installer-процессов
@@ -141,7 +151,7 @@ GitHub сортирует теги **как строки**, не как числ
 
 ## v0.1.0.8 · Deprecated
 
-> Не скачивайте — используйте [v0.1.0.19](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.19)
+> Не скачивайте — используйте [v0.1.0.20](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.20)
 
 - Тихий borderless loader при установке
 - Titlebar / режим окна настроек
@@ -152,7 +162,7 @@ GitHub сортирует теги **как строки**, не как числ
 
 ## v0.1.0.7 · Deprecated
 
-> Не скачивайте — используйте [v0.1.0.19](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.19)
+> Не скачивайте — используйте [v0.1.0.20](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.20)
 
 - Borderless WPF loader
 - Порядок вкладок настроек
@@ -163,7 +173,7 @@ GitHub сортирует теги **как строки**, не как числ
 
 ## v0.1.0.6 · Deprecated
 
-> Не скачивайте — используйте [v0.1.0.19](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.19)
+> Не скачивайте — используйте [v0.1.0.20](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.20)
 
 - Вкладка Account
 - Тёмная тема, tray fix
@@ -173,7 +183,7 @@ GitHub сортирует теги **как строки**, не как числ
 
 ## v0.1.0.5 · Deprecated
 
-> Не скачивайте — используйте [v0.1.0.19](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.19)
+> Не скачивайте — используйте [v0.1.0.20](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.20)
 
 - OAuth внутри окна приложения
 - Упрощённая навигация settings
@@ -184,7 +194,7 @@ GitHub сортирует теги **как строки**, не как числ
 
 ## v0.1.0.4 · Deprecated
 
-> Не скачивайте — используйте [v0.1.0.19](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.19)
+> Не скачивайте — используйте [v0.1.0.20](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.20)
 
 - Cloud UI
 - Прогресс загрузки Whisper
@@ -195,7 +205,7 @@ GitHub сортирует теги **как строки**, не как числ
 
 ## v0.1.0.3 · Deprecated
 
-> Не скачивайте — используйте [v0.1.0.19](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.19)
+> Не скачивайте — используйте [v0.1.0.20](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.20)
 
 - Перетаскиваемый topbar
 - FigJam installer wizard
@@ -206,7 +216,7 @@ GitHub сортирует теги **как строки**, не как числ
 
 ## v0.1.0.2 · Deprecated
 
-> Не скачивайте — используйте [v0.1.0.19](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.19)
+> Не скачивайте — используйте [v0.1.0.20](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.20)
 
 - FigJam settings UI
 - In-app OAuth
@@ -216,7 +226,7 @@ GitHub сортирует теги **как строки**, не как числ
 
 ## v0.1.0.1 · Deprecated
 
-> Не скачивайте — используйте [v0.1.0.19](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.19)
+> Не скачивайте — используйте [v0.1.0.20](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.20)
 
 - Stamp installer cache (SHA256 runtime)
 - Settings UI v2
@@ -226,7 +236,7 @@ GitHub сортирует теги **как строки**, не как числ
 
 ## v0.1.0.0 · Deprecated
 
-> Не скачивайте — используйте [v0.1.0.19](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.19)
+> Не скачивайте — используйте [v0.1.0.20](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.20)
 
 - Первый публичный thin-bootstrap установщик
 - Pill overlay, tray, local + cloud STT

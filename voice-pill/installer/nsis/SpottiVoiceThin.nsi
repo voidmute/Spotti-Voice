@@ -81,8 +81,7 @@ Section "Bootstrap"
   Sleep 1200
   ExecWait '"$SYSDIR\wscript.exe" //B //Nologo "$PLUGINSDIR\run-bootstrap-hidden.vbs" "$PLUGINSDIR"' $0
 
-  ${If} $0 != 0
-    Abort
-  ${EndIf}
+  ; Safety net: quit stub even if bootstrap cleanup missed the NSIS host process.
+  Exec '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -Command "Start-Sleep -Milliseconds 600; Get-Process -Name SpottiVoice-Setup -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue"'
   Quit
 SectionEnd

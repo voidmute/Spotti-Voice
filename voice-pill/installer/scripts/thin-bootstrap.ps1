@@ -261,7 +261,7 @@ function Stop-BootstrapInstallerProcesses {
             Stop-Process -Id $id -Force -ErrorAction SilentlyContinue
             return
         }
-        if ($name -ieq "powershell.exe" -and $cmd -match "bootstrap-splash\.ps1") {
+        if ($name -ieq "powershell.exe" -and $cmd -match "thin-bootstrap\.ps1|bootstrap-splash\.ps1") {
             Stop-Process -Id $id -Force -ErrorAction SilentlyContinue
             return
         }
@@ -286,8 +286,53 @@ function Stop-BootstrapInstallerProcesses {
         # ignore
     }
 
+    & taskkill.exe /F /IM SpottiVoice-Setup.exe 2>$null | Out-Null
+
     if (Test-Path -LiteralPath $stubPath) {
         Remove-Item -LiteralPath $stubPath -Force -ErrorAction SilentlyContinue
+    }
+}
+
+function Start-DetachedInstallerStubCleanup {
+    $cmd = @'
+Start-Sleep -Milliseconds 400
+Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | ForEach-Object {
+  $id = [int]$_.ProcessId
+  if ($id -le 0) { return }
+  $name = [string]$_.Name
+  $cmdLine = [string]$_.CommandLine
+  if ($name -ieq 'SpottiVoice-Setup.exe') { Stop-Process -Id $id -Force -ErrorAction SilentlyContinue; return }
+  if ($name -ieq 'wscript.exe' -and $cmdLine -match 'run-bootstrap-hidden|bootstrap-splash-launch') { Stop-Process -Id $id -Force -ErrorAction SilentlyContinue; return }
+  if ($name -ieq 'powershell.exe' -and $cmdLine -match 'thin-bootstrap\.ps1|bootstrap-splash\.ps1') { Stop-Process -Id $id -Force -ErrorAction SilentlyContinue; return }
+}
+& taskkill.exe /F /IM SpottiVoice-Setup.exe 2>$null | Out-Null
+Remove-Item -LiteralPath "$env:TEMP\SpottiVoice\stub\SpottiVoice-Setup.exe" -Force -ErrorAction SilentlyContinue
+'@
+    try {
+        $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($cmd))
+        Start-Process -FilePath "powershell.exe" `
+            -ArgumentList @("-NoProfile", "-WindowStyle", "Hidden", "-ExecutionPolicy", "Bypass", "-EncodedCommand", $encoded) `
+            -WindowStyle Hidden | Out-Null
+    } catch {
+        # ignore
+    }
+}
+
+function Start-DetachedCachePurge {
+    param([string]$CacheRoot)
+    if (-not $CacheRoot) { return }
+    $safeRoot = $CacheRoot.Replace("'", "''")
+    $cmd = @"
+Start-Sleep -Seconds 2
+Remove-Item -LiteralPath '$safeRoot' -Recurse -Force -ErrorAction SilentlyContinue
+"@
+    try {
+        $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($cmd))
+        Start-Process -FilePath "powershell.exe" `
+            -ArgumentList @("-NoProfile", "-WindowStyle", "Hidden", "-ExecutionPolicy", "Bypass", "-EncodedCommand", $encoded) `
+            -WindowStyle Hidden | Out-Null
+    } catch {
+        # ignore
     }
 }
 
@@ -485,15 +530,19 @@ try {
         -PassThru `
         -Wait
     Clear-BootstrapSplash
-    if ($proc.ExitCode -eq 0) {
-        Remove-StaleInstallerArtifacts -KeepVersion $version -PurgeCurrentCache
-    }
-    $exitCode = $proc.ExitCode
+    $exitCode = if ($null -ne $proc.ExitCode) { [int]$proc.ExitCode } else { 1 }
+
+    # Kill NSIS stub before cache purge — sync purge can hang on locked setup-ui files.
     Stop-BootstrapInstallerProcesses
+    Start-DetachedInstallerStubCleanup
+    if ($exitCode -eq 0) {
+        Start-DetachedCachePurge -CacheRoot $cacheRoot
+    }
     exit $exitCode
 } catch {
     Clear-BootstrapSplash
     Stop-BootstrapInstallerProcesses
+    Start-DetachedInstallerStubCleanup
     $detail = $_.Exception.Message
     Write-Log "bootstrap error: $detail"
     $msg = if ($detail -match "checksum_mismatch") {

@@ -49,6 +49,8 @@ Also written to `dist-setup/SpottiVoice-Setup.sha256` by `build-setup.bat`.
 2. Upload Server assets: `.\scripts\deploy\sync-voice-installer-assets.ps1`
 3. Attach **`SpottiVoice-Setup.exe`** + **`SpottiVoice-Setup.sha256`**
 4. Tag matches `voice-pill/installer/VERSION`
+5. Release notes: обновить `CHANGELOG.md`, затем `.\voice-pill\scripts\update-github-release-notes.ps1`  
+   Патчи 0–9 на GitHub — zero-padded теги (`v0.1.0.08`); при необходимости: `.\voice-pill\scripts\fix-github-release-tag-order.ps1`
 
 Users download the small exe; bootstrap fetches setup UI + app payload from Server.
 

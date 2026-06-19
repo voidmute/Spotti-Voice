@@ -6,10 +6,10 @@
 
 [![CI](https://github.com/voidmute/Spotti-Voice/actions/workflows/ci.yml/badge.svg)](https://github.com/voidmute/Spotti-Voice/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Releases](https://img.shields.io/badge/releases-v0.1.0.19-5865F2)](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.19)
+[![Releases](https://img.shields.io/badge/releases-v0.1.0.20-5865F2)](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.20)
 [![Spotti Servers](https://img.shields.io/badge/cloud-Spotti%20Servers-5865F2)](https://spottibot.duckdns.org)
 
-[Скачать релиз](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.19) · [Changelog](CHANGELOG.md) · [Безопасность](SECURITY.md) · [Contributing](CONTRIBUTING.md)
+[Скачать релиз](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.20) · [Changelog](CHANGELOG.md) · [Безопасность](SECURITY.md) · [Contributing](CONTRIBUTING.md)
 
 </div>
 

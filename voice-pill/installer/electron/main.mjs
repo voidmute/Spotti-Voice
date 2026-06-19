@@ -419,21 +419,35 @@ async function pathExists(target) {
 
 function dismissInstallerSiblings(installDir) {
   if (process.platform !== "win32") return;
-  const script = path.join(installDir, "scripts", "dismiss-installer-processes.ps1");
-  if (!fs.existsSync(script)) return;
+
+  const inlinePs = [
+    "Start-Sleep -Milliseconds 300",
+    "Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | ForEach-Object {",
+    "  $id = [int]$_.ProcessId",
+    "  $name = [string]$_.Name",
+    "  $cmd = [string]$_.CommandLine",
+    "  if ($name -ieq 'SpottiVoice-Setup.exe') { Stop-Process -Id $id -Force -ErrorAction SilentlyContinue; return }",
+    "  if ($name -ieq 'wscript.exe' -and $cmd -match 'run-bootstrap-hidden|bootstrap-splash-launch') { Stop-Process -Id $id -Force -ErrorAction SilentlyContinue; return }",
+    "  if ($name -ieq 'powershell.exe' -and $cmd -match 'thin-bootstrap\\.ps1|bootstrap-splash\\.ps1|dismiss-installer-processes\\.ps1') { Stop-Process -Id $id -Force -ErrorAction SilentlyContinue; return }",
+    "}",
+    "& taskkill.exe /F /IM SpottiVoice-Setup.exe 2>$null | Out-Null",
+    "Remove-Item -LiteralPath (Join-Path $env:TEMP 'SpottiVoice\\stub\\SpottiVoice-Setup.exe') -Force -ErrorAction SilentlyContinue",
+  ].join(" ");
+
   spawn(
     "powershell.exe",
-    [
-      "-NoProfile",
-      "-WindowStyle",
-      "Hidden",
-      "-ExecutionPolicy",
-      "Bypass",
-      "-File",
-      script,
-    ],
+    ["-NoProfile", "-WindowStyle", "Hidden", "-ExecutionPolicy", "Bypass", "-Command", inlinePs],
     { detached: true, stdio: "ignore", windowsHide: true },
   ).unref();
+
+  const script = path.join(installDir, "scripts", "dismiss-installer-processes.ps1");
+  if (fs.existsSync(script)) {
+    spawn(
+      "powershell.exe",
+      ["-NoProfile", "-WindowStyle", "Hidden", "-ExecutionPolicy", "Bypass", "-File", script],
+      { detached: true, stdio: "ignore", windowsHide: true },
+    ).unref();
+  }
 }
 
 async function countPayloadFiles(root) {
@@ -754,6 +768,10 @@ ipcMain.handle("setup:install", async (event, rawOptions) => {
       }
       app.quit(0);
     }, 500);
+
+    setTimeout(() => {
+      dismissInstallerSiblings(installDir);
+    }, 2500);
     return { ok: true, installDir };
   } catch (err) {
     if (String(err?.message || err) === "cancelled") {
