@@ -2377,6 +2377,22 @@ html:has(.settings-app) body::-webkit-scrollbar {
   border-color: rgb(251 113 133 / 0.35);
 }
 
+.settings-onboarding-replay {
+  margin-top: 12px;
+}
+
+.settings-onboarding-replay .settings-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-app.is-onboarding .settings-body {
+  pointer-events: none;
+  user-select: none;
+}
+
+
 @media (prefers-reduced-motion: reduce) {
   .settings-app {
     opacity: 1 !important;

@@ -15,6 +15,8 @@ import { AccountPanel } from "./AccountPanel";
 import { ModeSwitch, type SttMode } from "./ModeSwitch";
 import { SettingsTitleBar } from "./SettingsTitleBar";
 import { CloudAuthGate, fetchCloudSignedIn } from "./CloudAuthGate";
+import { OnboardingOverlay } from "./OnboardingOverlay";
+import { shouldShowOnboarding } from "./onboardingSteps";
 import { readStoredTheme, persistTheme, type UiTheme } from "./ThemeToggle";
 import { useSettingsPanelMotion, useSettingsShellMotion } from "./motion";
 import "./settings.css";
@@ -113,6 +115,7 @@ export function SettingsApp() {
   const [engineOnline, setEngineOnline] = useState<boolean | null>(null);
   const [hotkeyCapturing, setHotkeyCapturing] = useState(false);
   const [authGateOpen, setAuthGateOpen] = useState(false);
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [theme, setTheme] = useState<UiTheme>(() => readStoredTheme());
 
   const hydratedRef = useRef(false);
@@ -167,10 +170,18 @@ export function SettingsApp() {
         hydratedRef.current = true;
 
         if (normalized.sttMode === "cloud") {
-          void fetchCloudSignedIn(base).then((signedIn) => {
-            if (!signedIn) setAuthGateOpen(true);
+          void shouldShowOnboarding().then((showOnboarding) => {
+            if (!showOnboarding) {
+              void fetchCloudSignedIn(base).then((signedIn) => {
+                if (!signedIn) setAuthGateOpen(true);
+              });
+            }
           });
         }
+
+        void shouldShowOnboarding().then((show) => {
+          if (show) setOnboardingOpen(true);
+        });
       })
       .catch(() => {
         setEngineOnline(false);
@@ -327,7 +338,7 @@ export function SettingsApp() {
   return (
     <div
       ref={appRef}
-      className={`settings-app settings-app--v2 settings-app--figjam${authGateOpen ? " is-auth-gate" : ""}`}
+      className={`settings-app settings-app--v2 settings-app--figjam${authGateOpen ? " is-auth-gate" : ""}${onboardingOpen ? " is-onboarding" : ""}`}
       data-theme={theme}
     >
       <SettingsTitleBar
@@ -368,8 +379,20 @@ export function SettingsApp() {
         </main>
       </div>
 
+      <OnboardingOverlay
+        open={onboardingOpen}
+        onClose={() => {
+          setOnboardingOpen(false);
+          if (settings?.sttMode === "cloud") {
+            void fetchCloudSignedIn(base).then((signedIn) => {
+              if (!signedIn) setAuthGateOpen(true);
+            });
+          }
+        }}
+      />
+
       <CloudAuthGate
-        open={authGateOpen && isCloud}
+        open={authGateOpen && isCloud && !onboardingOpen}
         onClose={() => setAuthGateOpen(false)}
         onSignedIn={() => {
           authPromptedRef.current = true;

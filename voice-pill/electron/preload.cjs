@@ -23,4 +23,6 @@ contextBridge.exposeInMainWorld("spottiVoice", {
     ipcRenderer.on("voice:cloud-auth-changed", listener);
     return () => ipcRenderer.removeListener("voice:cloud-auth-changed", listener);
   },
+  markOnboardingComplete: () => ipcRenderer.invoke("voice:onboarding-complete"),
+  getOnboardingStatus: () => ipcRenderer.invoke("voice:onboarding-status"),
 });

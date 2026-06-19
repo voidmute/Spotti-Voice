@@ -233,6 +233,8 @@ declare global {
       }>;
       onCloudAuthChanged?: (handler: () => void) => () => void;
       runUninstall?: () => Promise<{ ok: boolean; error?: string }>;
+      markOnboardingComplete?: () => Promise<{ ok: boolean }>;
+      getOnboardingStatus?: () => Promise<{ complete: boolean }>;
     };
   }
 }

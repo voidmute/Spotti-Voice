@@ -1,9 +1,9 @@
 # Update GitHub release notes from CHANGELOG sections.
-# Usage: .\voice-pill\scripts\update-github-release-notes.ps1 [-Repo voidmute/Spotti-Voice] [-LatestVersion v0.1.0.20]
+# Usage: .\voice-pill\scripts\update-github-release-notes.ps1 [-Repo voidmute/Spotti-Voice] [-LatestVersion v0.1.0.21]
 
 param(
     [string]$Repo = "voidmute/Spotti-Voice",
-    [string]$LatestVersion = "v0.1.0.20",
+    [string]$LatestVersion = "v0.1.0.21",
     [string]$ChangelogPath = ""
 )
 
@@ -71,7 +71,7 @@ function Get-GitHubReleaseTag([string]$Version) {
 }
 
 # GitHub lists releases by published_at (newest edit first). Edit OLDEST first so v0.1.0.19
-# is touched last and stays on top; v0.1.0.10 above v0.1.0.09 above v0.1.0.08, etc.
+# is touched last and stays on top; v0.1.0.21 above v0.1.0.20, etc.
 $orderedVersions = @($sections.Keys | Sort-Object { Get-SemVer $_ })
 
 foreach ($ver in $orderedVersions) {

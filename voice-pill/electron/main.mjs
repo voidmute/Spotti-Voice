@@ -453,6 +453,27 @@ function isTrustedSender(event) {
   return event.senderFrame === event.sender.mainFrame;
 }
 
+function onboardingCompletePath() {
+  return path.join(app.getPath("userData"), "onboarding-complete.marker");
+}
+
+function isOnboardingCompleteOnDisk() {
+  try {
+    return fs.existsSync(onboardingCompletePath());
+  } catch {
+    return false;
+  }
+}
+
+function markOnboardingCompleteOnDisk() {
+  try {
+    fs.mkdirSync(path.dirname(onboardingCompletePath()), { recursive: true });
+    fs.writeFileSync(onboardingCompletePath(), new Date().toISOString(), "utf8");
+  } catch {
+    /* ignore */
+  }
+}
+
 function settingsHotkeyToAccelerator(hotkey) {
   return hotkey
     .split("+")
@@ -1744,6 +1765,17 @@ function buildTray() {
   });
 }
 
+ipcMain.handle("voice:onboarding-status", (event) => {
+  if (!isTrustedSender(event)) throw new Error("Untrusted IPC sender");
+  return { complete: isOnboardingCompleteOnDisk() };
+});
+
+ipcMain.handle("voice:onboarding-complete", (event) => {
+  if (!isTrustedSender(event)) throw new Error("Untrusted IPC sender");
+  markOnboardingCompleteOnDisk();
+  return { ok: true };
+});
+
 ipcMain.handle("voice:engine-base", (event) => {
   if (!isTrustedSender(event)) throw new Error("Untrusted IPC sender");
   return ENGINE_BASE;
@@ -1993,7 +2025,9 @@ app.whenReady().then(async () => {
   const engineSettings = await fetchEngineSettings();
   await createOverlay(engineSettings);
   buildTray();
-  if (engineSettings?.settingsWindow?.open) {
+  if (!isOnboardingCompleteOnDisk()) {
+    await createSettings(engineSettings);
+  } else if (engineSettings?.settingsWindow?.open) {
     await createSettings(engineSettings);
   }
   const audioReady = await waitForEngineAudio();
