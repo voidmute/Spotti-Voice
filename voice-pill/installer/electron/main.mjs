@@ -417,6 +417,25 @@ async function pathExists(target) {
   }
 }
 
+function dismissInstallerSiblings(installDir) {
+  if (process.platform !== "win32") return;
+  const script = path.join(installDir, "scripts", "dismiss-installer-processes.ps1");
+  if (!fs.existsSync(script)) return;
+  spawn(
+    "powershell.exe",
+    [
+      "-NoProfile",
+      "-WindowStyle",
+      "Hidden",
+      "-ExecutionPolicy",
+      "Bypass",
+      "-File",
+      script,
+    ],
+    { detached: true, stdio: "ignore", windowsHide: true },
+  ).unref();
+}
+
 async function countPayloadFiles(root) {
   let total = 0;
   let bytes = 0;
@@ -723,10 +742,12 @@ ipcMain.handle("setup:install", async (event, rawOptions) => {
       const electronDir = path.join(installDir, "electron");
       if (await pathExists(exe)) {
         spawn(exe, [electronDir], { detached: true, stdio: "ignore" }).unref();
+        dismissInstallerSiblings(installDir);
       }
     }
 
     setTimeout(() => {
+      dismissInstallerSiblings(installDir);
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.close();
       }

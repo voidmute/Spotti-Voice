@@ -45,6 +45,25 @@ if (typeof app.setName === "function") {
 
 const uninstallMode = process.argv.some((entry) => entry === "--uninstall");
 
+function dismissInstallerProcesses() {
+  if (process.platform !== "win32") return;
+  const script = path.join(ROOT, "scripts", "dismiss-installer-processes.ps1");
+  if (!fs.existsSync(script)) return;
+  spawn(
+    "powershell.exe",
+    [
+      "-NoProfile",
+      "-WindowStyle",
+      "Hidden",
+      "-ExecutionPolicy",
+      "Bypass",
+      "-File",
+      script,
+    ],
+    { detached: true, stdio: "ignore", windowsHide: true },
+  ).unref();
+}
+
 const gotSingleInstanceLock = uninstallMode || app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
   app.quit();
@@ -1948,6 +1967,7 @@ app.on("second-instance", (_event, argv) => {
 });
 
 app.whenReady().then(async () => {
+  dismissInstallerProcesses();
   registerSpottiVoiceProtocol();
   getAppIcons();
 

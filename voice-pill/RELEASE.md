@@ -52,6 +52,20 @@ Also written to `dist-setup/SpottiVoice-Setup.sha256` by `build-setup.bat`.
 
 Users download the small exe; bootstrap fetches setup UI + app payload from VPS.
 
+## Windows SmartScreen
+
+Unsigned or new builds trigger SmartScreen. **Permanent fix:** EV code signing certificate + `sign-release.ps1`.
+
+Optional signing before `build-setup.bat`:
+
+```powershell
+$env:SPOTTI_CODESIGN_PFX = "C:\path\to\codesign.pfx"
+$env:SPOTTI_CODESIGN_PASSWORD = "pfx-password"
+```
+
+Until signed: **Подробнее** → **Выполнить в любом случае** (More info → Run anyway).  
+Unblock download: file **Properties** → **Unblock** if shown.
+
 ## Manual smoke (fresh VM)
 
 - [ ] Run `SpottiVoice-Setup.exe` (single file) — wizard completes, shortcuts created

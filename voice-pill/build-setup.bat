@@ -149,6 +149,10 @@ echo [SPOTTI] Writing SHA256...
 powershell -NoProfile -ExecutionPolicy Bypass -Command "$h=(Get-FileHash -LiteralPath 'dist-setup\SpottiVoice-Setup.exe' -Algorithm SHA256).Hash.ToLower(); Set-Content -LiteralPath 'dist-setup\SpottiVoice-Setup.sha256' -Value \"$h  SpottiVoice-Setup.exe\" -Encoding ascii"
 if errorlevel 1 exit /b 1
 
+echo [SPOTTI] Code signing (optional)...
+powershell -NoProfile -ExecutionPolicy Bypass -File "installer\scripts\sign-release.ps1" -Files "dist-setup\SpottiVoice-Setup.exe"
+if errorlevel 1 exit /b 1
+
 echo.
 echo [OK] dist-setup\SpottiVoice-Setup.exe ^(thin bootstrap — upload assets to VPS^)
 echo [OK] dist-setup\manifest.json + setup-runtime.zip + payload.zip

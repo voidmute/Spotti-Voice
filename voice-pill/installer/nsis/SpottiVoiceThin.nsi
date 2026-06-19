@@ -2,6 +2,9 @@
 ; Build: voice-pill\build-setup.bat
 
 !include "LogicLib.nsh"
+!include "FileFunc.nsh"
+!insertmacro GetParameters
+!insertmacro GetOptions
 
 !define APP_NAME "Spotti Voice"
 !ifndef APP_VERSION
@@ -14,10 +17,32 @@ Name "${APP_NAME}"
 !endif
 OutFile "${OUTFILE_REL}"
 SetCompressor /SOLID lzma
-RequestExecutionLevel admin
+RequestExecutionLevel user
 ShowInstDetails hide
 SilentInstall silent
 Icon "..\..\assets\app-icon.ico"
+
+VIProductVersion ${APP_VERSION}
+VIAddVersionKey /LANG=1033 "ProductName" "${APP_NAME}"
+VIAddVersionKey /LANG=1033 "CompanyName" "Spotti"
+VIAddVersionKey /LANG=1033 "FileDescription" "${APP_NAME} Installer"
+VIAddVersionKey /LANG=1033 "FileVersion" "${APP_VERSION}"
+VIAddVersionKey /LANG=1033 "ProductVersion" "${APP_VERSION}"
+VIAddVersionKey /LANG=1033 "LegalCopyright" "Spotti"
+
+Function .onInit
+  ${GetParameters} $R0
+  StrCpy $R1 ""
+  ${GetOptions} $R0 "/stubcache" $R1
+  StrCmp $R1 "1" bootstrap_run
+
+  CreateDirectory "$TEMP\SpottiVoice\stub"
+  CopyFiles /SILENT "$EXEPATH" "$TEMP\SpottiVoice\stub\SpottiVoice-Setup.exe"
+  Exec '"$TEMP\SpottiVoice\stub\SpottiVoice-Setup.exe" /stubcache=1'
+  Quit
+
+bootstrap_run:
+FunctionEnd
 
 Section "Bootstrap"
   InitPluginsDir
@@ -43,4 +68,5 @@ Section "Bootstrap"
   ${If} $0 != 0
     Abort
   ${EndIf}
+  Quit
 SectionEnd

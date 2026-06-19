@@ -358,6 +358,8 @@ try {
 
     Remove-StaleInstallerArtifacts -KeepVersion $version
 
+    Show-BootstrapSplash -PluginDir $PluginDir | Out-Null
+
     $cacheRoot = Join-Path $env:LOCALAPPDATA "SpottiVoice\installer-cache\$version"
     $setupUiDir = Join-Path $cacheRoot "setup-ui"
     $runtimeZip = Join-Path $cacheRoot "setup-runtime.zip"
@@ -375,25 +377,20 @@ try {
         -FallbackExe $fallbackExe)
 
     if ($needRuntime) {
-        Show-BootstrapSplash -PluginDir $PluginDir | Out-Null
-        try {
-            $zipOk = $false
-            if (Test-Path -LiteralPath $runtimeZip) {
-                $zipOk = (Get-Sha256 $runtimeZip) -eq $expectedRuntimeSha.ToLower()
-            }
-            if (-not $zipOk) {
-                Write-Log "download setup-runtime"
-                Download-FileRobust `
-                    -Url ([string]$manifest.setupRuntime.url) `
-                    -Dest $runtimeZip `
-                    -ExpectedSha256 $expectedRuntimeSha
-            }
-            Write-Log "extract setup-runtime"
-            Extract-SetupRuntime -RuntimeZip $runtimeZip -SetupUiDir $setupUiDir
-            Write-RuntimeStamp -SetupUiDir $setupUiDir -Sha256 $expectedRuntimeSha
-        } finally {
-            Clear-BootstrapSplash
+        $zipOk = $false
+        if (Test-Path -LiteralPath $runtimeZip) {
+            $zipOk = (Get-Sha256 $runtimeZip) -eq $expectedRuntimeSha.ToLower()
         }
+        if (-not $zipOk) {
+            Write-Log "download setup-runtime"
+            Download-FileRobust `
+                -Url ([string]$manifest.setupRuntime.url) `
+                -Dest $runtimeZip `
+                -ExpectedSha256 $expectedRuntimeSha
+        }
+        Write-Log "extract setup-runtime"
+        Extract-SetupRuntime -RuntimeZip $runtimeZip -SetupUiDir $setupUiDir
+        Write-RuntimeStamp -SetupUiDir $setupUiDir -Sha256 $expectedRuntimeSha
     }
 
     Write-Log "stage vc runtime"
@@ -406,6 +403,7 @@ try {
     }
 
     Write-Log "launch setup wizard $launchExe"
+    Clear-BootstrapSplash
     $proc = Start-Process `
         -FilePath $launchExe `
         -ArgumentList "`"$setupUiDir`"" `
