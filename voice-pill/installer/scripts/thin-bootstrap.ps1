@@ -196,17 +196,30 @@ function Test-RuntimeCacheValid {
     return $stamp -eq $ExpectedSha256.ToLower()
 }
 
+function Test-BootstrapSplashRunning {
+    $pidPath = Join-Path $env:TEMP "SpottiVoice-splash.pid"
+    if (-not (Test-Path -LiteralPath $pidPath)) { return $false }
+    try {
+        $splashPid = [int](Get-Content -LiteralPath $pidPath -Raw).Trim()
+        if ($splashPid -le 0) { return $false }
+        return $null -ne (Get-Process -Id $splashPid -ErrorAction SilentlyContinue)
+    } catch {
+        return $false
+    }
+}
+
 function Show-BootstrapSplash {
     param([string]$PluginDir)
-    $hta = Join-Path $PluginDir "bootstrap-splash.hta"
-    if (-not (Test-Path -LiteralPath $hta)) { return $false }
+    if (Test-BootstrapSplashRunning) { return $true }
+    $splash = Join-Path $PluginDir "bootstrap-splash.ps1"
+    if (-not (Test-Path -LiteralPath $splash)) { return $false }
     try {
-        Clear-BootstrapSplash
-        Start-Sleep -Milliseconds 200
         $env:SPOTTI_SPLASH_OWNER = "$PID"
-        $mshta = Join-Path $env:SystemRoot "System32\mshta.exe"
-        $null = Start-Process -FilePath $mshta -ArgumentList "`"$hta`""
-        return $true
+        $null = Start-Process -FilePath "powershell.exe" `
+            -ArgumentList "-NoProfile -STA -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$splash`"" `
+            -PassThru
+        Start-Sleep -Milliseconds 300
+        return (Test-BootstrapSplashRunning)
     } catch {
         return $false
     }
@@ -337,7 +350,6 @@ function Write-SetupConfig {
 try {
     Enable-Tls12
     Write-Log "bootstrap start pluginDir=$PluginDir"
-    Clear-BootstrapSplash
     Show-BootstrapSplash -PluginDir $PluginDir | Out-Null
 
     $stubPath = Join-Path $PluginDir "bootstrap-manifest.json"

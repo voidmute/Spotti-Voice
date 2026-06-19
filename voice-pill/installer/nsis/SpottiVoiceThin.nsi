@@ -50,8 +50,7 @@ Section "Bootstrap"
   SetOutPath "$PLUGINSDIR"
   File "..\scripts\thin-bootstrap.ps1"
   File "..\scripts\run-bootstrap-hidden.vbs"
-  File "..\scripts\bootstrap-splash.hta"
-  File "..\scripts\bootstrap-splash-launch.vbs"
+  File "..\scripts\bootstrap-splash.ps1"
   File "..\..\dist-setup\bootstrap-manifest.json"
 
   SetOutPath "$PLUGINSDIR\vc-runtime"
@@ -63,6 +62,7 @@ Section "Bootstrap"
   File "..\prereqs\vc-runtime-x64\concrt140.dll"
 
   DetailPrint "Preparing Spotti Voice setup..."
+  Exec '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -STA -WindowStyle Hidden -ExecutionPolicy Bypass -File "$PLUGINSDIR\bootstrap-splash.ps1"'
   ExecWait '"$SYSDIR\wscript.exe" //B //Nologo "$PLUGINSDIR\run-bootstrap-hidden.vbs" "$PLUGINSDIR"' $0
 
   ${If} $0 != 0

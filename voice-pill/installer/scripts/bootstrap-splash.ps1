@@ -1,4 +1,4 @@
-# Borderless spinning white ring - no console, no taskbar.
+# Borderless spinning white arc — no console, no taskbar, no text caret.
 $pidPath = Join-Path $env:TEMP "SpottiVoice-splash.pid"
 $stopPath = Join-Path $env:TEMP "SpottiVoice-splash.stop"
 Remove-Item -LiteralPath $stopPath -Force -ErrorAction SilentlyContinue
@@ -12,8 +12,8 @@ if ($env:SPOTTI_SPLASH_OWNER) {
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
 
 $window = New-Object System.Windows.Window
-$window.Width = 32
-$window.Height = 32
+$window.Width = 40
+$window.Height = 40
 $window.WindowStyle = [System.Windows.WindowStyle]::None
 $window.AllowsTransparency = $true
 $window.Background = [System.Windows.Media.Brushes]::Transparent
@@ -22,19 +22,13 @@ $window.ShowInTaskbar = $false
 $window.WindowStartupLocation = [System.Windows.WindowStartupLocation]::CenterScreen
 $window.ResizeMode = [System.Windows.ResizeMode]::NoResize
 $window.IsHitTestVisible = $false
+$window.Focusable = $false
+$window.ShowActivated = $false
 $window.UseLayoutRounding = $true
 $window.SnapsToDevicePixels = $true
 
-$size = 24.0
-$thickness = 2.5
-$trackColor = [System.Windows.Media.Color]::FromArgb(36, 255, 255, 255)
-
-$track = New-Object System.Windows.Shapes.Ellipse
-$track.Width = $size
-$track.Height = $size
-$track.Stroke = New-Object System.Windows.Media.SolidColorBrush $trackColor
-$track.StrokeThickness = $thickness
-$track.Fill = [System.Windows.Media.Brushes]::Transparent
+$size = 28.0
+$thickness = 3.0
 
 $arc = New-Object System.Windows.Shapes.Ellipse
 $arc.Width = $size
@@ -45,8 +39,8 @@ $arc.Fill = [System.Windows.Media.Brushes]::Transparent
 $arc.StrokeStartLineCap = [System.Windows.Media.PenLineCap]::Round
 $arc.StrokeEndLineCap = [System.Windows.Media.PenLineCap]::Round
 $dash = New-Object System.Windows.Media.DoubleCollection
-[void]$dash.Add(18.5)
-[void]$dash.Add(57.0)
+[void]$dash.Add(20.0)
+[void]$dash.Add(68.0)
 $arc.StrokeDashArray = $dash
 
 $rotate = New-Object System.Windows.Media.RotateTransform
@@ -57,7 +51,7 @@ $arc.RenderTransform = $rotate
 $arc.RenderTransformOrigin = New-Object System.Windows.Point(0.5, 0.5)
 
 $grid = New-Object System.Windows.Controls.Grid
-[void]$grid.Children.Add($track)
+$grid.Focusable = $false
 [void]$grid.Children.Add($arc)
 $window.Content = $grid
 
