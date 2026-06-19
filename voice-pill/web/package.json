@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "animejs": "^4.4.1",
     "country-flag-icons": "^1.6.17",
     "lucide-react": "^1.18.0",
     "react": "^19.1.0",

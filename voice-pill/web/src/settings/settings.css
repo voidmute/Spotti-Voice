@@ -93,7 +93,7 @@
 .settings-titlebar {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   gap: 12px;
   height: var(--setup-titlebar-h);
@@ -154,30 +154,42 @@
 }
 
 .settings-titlebar__center {
-  display: none;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+  -webkit-app-region: no-drag;
 }
 
-.settings-sidebar-mode {
+.mode-switch--titlebar {
+  width: 248px;
+  max-width: min(248px, 42vw);
   flex-shrink: 0;
+}
+
+.settings-theme-icon-btn {
   display: grid;
-  gap: 8px;
-  padding: 10px 6px 0;
-  margin-top: 6px;
-  border-top: 1px solid var(--setup-border);
-}
-
-.settings-sidebar-mode__label {
-  padding: 0 4px;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  place-items: center;
+  width: 36px;
+  height: 32px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
   color: var(--setup-muted);
+  cursor: pointer;
+  transition: background 0.15s ease-out, color 0.15s ease-out, border-color 0.15s ease-out;
+  -webkit-app-region: no-drag;
 }
 
-.mode-switch--sidebar {
-  width: 100%;
-  max-width: none;
+.settings-theme-icon-btn:hover {
+  background: var(--setup-surface-hover);
+  color: var(--setup-text);
+  border-color: var(--setup-border);
+}
+
+.settings-app {
+  opacity: 0;
 }
 
 .settings-win-btn {
@@ -2126,9 +2138,20 @@ html:has(.settings-app) body::-webkit-scrollbar {
 .cloud-gate__card--oauth {
   display: flex;
   flex-direction: column;
-  width: min(96vw, 560px);
-  max-height: min(92vh, 680px);
-  padding: 18px 18px 16px;
+  width: min(96vw, 440px);
+  padding: 12px;
+  gap: 0;
+}
+
+.cloud-gate__card--oauth .cloud-gate__close {
+  top: 8px;
+  right: 8px;
+}
+
+.cloud-gate__oauth {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .cloud-gate__card--oauth .cloud-gate__title {
@@ -2183,22 +2206,19 @@ html:has(.settings-app) body::-webkit-scrollbar {
 }
 
 .cloud-gate__webview-wrap {
-  flex: 1;
-  min-height: 460px;
-  height: min(58vh, 540px);
   width: 100%;
-  margin-top: 12px;
+  height: 268px;
+  min-height: 0;
   border-radius: 12px;
   overflow: hidden;
   border: 1px solid var(--setup-border);
-  background: #1e1f22;
+  background: #313338;
 }
 
 .cloud-gate__webview {
-  display: flex;
+  display: block;
   width: 100%;
   height: 100%;
-  min-height: 100%;
   border: none;
 }
 
@@ -2246,55 +2266,6 @@ html:has(.settings-app) body::-webkit-scrollbar {
   display: flex;
   flex-direction: column;
   gap: 14px;
-}
-
-/* ── Theme toggle ── */
-
-.settings-theme-toggle {
-  flex-shrink: 0;
-  display: grid;
-  gap: 8px;
-  margin-top: auto;
-  padding: 10px 8px 4px;
-  border-top: 1px solid var(--setup-border);
-}
-
-.settings-theme-toggle__label {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--setup-muted);
-}
-
-.settings-theme-toggle__btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 9px 10px;
-  border: 1px solid transparent;
-  border-radius: 10px;
-  background: transparent;
-  color: var(--setup-muted);
-  font: inherit;
-  font-size: 12px;
-  font-weight: 650;
-  text-align: left;
-  cursor: pointer;
-  transition: background 0.15s ease-out, color 0.15s ease-out, border-color 0.15s ease-out;
-}
-
-.settings-theme-toggle__btn:hover {
-  background: var(--setup-surface-hover);
-  color: var(--setup-text);
-}
-
-.settings-theme-toggle__btn.is-active {
-  border-color: var(--setup-border-strong);
-  background: var(--setup-surface);
-  color: var(--setup-text);
-  box-shadow: 0 1px 2px rgb(18 18 24 / 0.06);
 }
 
 /* ── Dark theme ── */
@@ -2355,7 +2326,7 @@ html:has(.settings-app) body::-webkit-scrollbar {
 }
 
 .settings-app[data-theme="dark"] .cloud-gate__webview-wrap {
-  background: #1e1f22;
+  background: #313338;
 }
 
 .settings-app[data-theme="dark"] .cloud-gate__error {
@@ -2364,7 +2335,7 @@ html:has(.settings-app) body::-webkit-scrollbar {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .settings-theme-toggle__btn {
-    transition: none;
+  .settings-app {
+    opacity: 1 !important;
   }
 }

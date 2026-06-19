@@ -1,7 +1,14 @@
+import { type ReactNode } from "react";
 import { Minus, X } from "lucide-react";
-import type { UiTheme } from "./ThemeToggle";
+import { ThemeToggle, type UiTheme } from "./ThemeToggle";
 
-export function SettingsTitleBar({ theme }: { theme: UiTheme }) {
+type SettingsTitleBarProps = {
+  theme: UiTheme;
+  onThemeChange: (theme: UiTheme) => void;
+  modeSwitch?: ReactNode;
+};
+
+export function SettingsTitleBar({ theme, onThemeChange, modeSwitch }: SettingsTitleBarProps) {
   const logoSrc = theme === "dark" ? "./white-only.png" : "./brand-mark.png";
 
   return (
@@ -14,7 +21,10 @@ export function SettingsTitleBar({ theme }: { theme: UiTheme }) {
         </div>
       </div>
 
+      <div className="settings-titlebar__center">{modeSwitch}</div>
+
       <div className="settings-titlebar__controls">
+        <ThemeToggle value={theme} onChange={onThemeChange} />
         <button
           type="button"
           className="settings-win-btn"

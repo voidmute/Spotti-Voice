@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { AlertCircle, Loader2, X } from "lucide-react";
+import { animateCloudGate } from "./motion";
 
 type CloudStatus = {
   signedIn: boolean;
@@ -47,21 +48,39 @@ export function CloudAuthGate({
   const [error, setError] = useState("");
   const [authorizeUrl, setAuthorizeUrl] = useState<string | null>(null);
   const webviewRef = useRef<HTMLElement | null>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) {
       setAuthorizeUrl(null);
       setError("");
       setBusy(false);
+      return;
     }
-  }, [open]);
+    animateCloudGate(cardRef.current, true);
+  }, [open, authorizeUrl]);
 
   useEffect(() => {
     const wv = webviewRef.current as (HTMLElement & {
       setZoomFactor?: (factor: number) => void;
       insertCSS?: (css: string) => void;
+      executeJavaScript?: (code: string) => void;
     }) | null;
     if (!wv || !authorizeUrl) return undefined;
+
+    const oauthCss = `
+      html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        overflow: hidden !important;
+        background: #313338 !important;
+      }
+      body > * {
+        max-width: 100% !important;
+      }
+    `;
 
     const onNavigate = (event: Event & { url?: string; preventDefault?: () => void }) => {
       const url = event.url;
@@ -73,7 +92,7 @@ export function CloudAuthGate({
     const onDomReady = () => {
       try {
         wv.setZoomFactor?.(1);
-        wv.insertCSS?.("html,body{margin:0!important;padding:0!important;overflow:hidden!important;width:100%!important;height:100%!important;}");
+        wv.insertCSS?.(oauthCss);
       } catch {
         /* ignore */
       }
@@ -134,7 +153,10 @@ export function CloudAuthGate({
   return (
     <div className="cloud-gate" role="dialog" aria-modal="true" aria-labelledby="cloud-gate-title">
       <button type="button" className="cloud-gate__backdrop" aria-label="Закрыть" onClick={onClose} />
-      <div className={`cloud-gate__card${authorizeUrl ? " cloud-gate__card--oauth" : ""}`}>
+      <div
+        ref={cardRef}
+        className={`cloud-gate__card${authorizeUrl ? " cloud-gate__card--oauth" : ""}`}
+      >
         <button type="button" className="cloud-gate__close" aria-label="Закрыть" onClick={onClose}>
           <X size={18} strokeWidth={2.25} />
         </button>
@@ -159,9 +181,7 @@ export function CloudAuthGate({
             </button>
           </>
         ) : (
-          <>
-            <p className="cloud-gate__eyebrow">Облако Spotti</p>
-            <h2 className="cloud-gate__title">Завершите вход</h2>
+          <div className="cloud-gate__oauth">
             <div className="cloud-gate__webview-wrap">
               <webview
                 ref={webviewRef}
@@ -170,7 +190,7 @@ export function CloudAuthGate({
                 partition="persist:spotti-oauth"
               />
             </div>
-          </>
+          </div>
         )}
 
         {error ? (

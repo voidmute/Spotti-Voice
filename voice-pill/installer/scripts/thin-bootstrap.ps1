@@ -199,25 +199,34 @@ function Test-RuntimeCacheValid {
 function Show-BootstrapSplash {
     param([string]$PluginDir)
     $ps1 = Join-Path $PluginDir "bootstrap-splash.ps1"
+    $vbs = Join-Path $PluginDir "bootstrap-splash-launch.vbs"
     if (-not (Test-Path -LiteralPath $ps1)) { return $null }
+    if (-not (Test-Path -LiteralPath $vbs)) { return $null }
     try {
-        return Start-Process -FilePath "powershell.exe" `
-            -ArgumentList "-STA -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$ps1`"" `
+        $null = Start-Process -FilePath "wscript.exe" `
+            -ArgumentList "//B //Nologo `"$vbs`" `"$ps1`"" `
+            -WindowStyle Hidden `
             -PassThru
+        return $true
     } catch {
         return $null
     }
 }
 
 function Hide-BootstrapSplash {
-    param($SplashProc)
-    if (-not $SplashProc) { return }
+    param($SplashStarted)
+    if (-not $SplashStarted) { return }
+    $pidPath = Join-Path $env:TEMP "SpottiVoice-splash.pid"
+    if (-not (Test-Path -LiteralPath $pidPath)) { return }
     try {
-        if (-not $SplashProc.HasExited) {
-            Stop-Process -Id $SplashProc.Id -Force -ErrorAction SilentlyContinue
+        $splashPid = [int](Get-Content -LiteralPath $pidPath -Raw).Trim()
+        if ($splashPid -gt 0) {
+            Stop-Process -Id $splashPid -Force -ErrorAction SilentlyContinue
         }
     } catch {
         # ignore
+    } finally {
+        Remove-Item -LiteralPath $pidPath -Force -ErrorAction SilentlyContinue
     }
 }
 
@@ -312,7 +321,7 @@ try {
             Extract-SetupRuntime -RuntimeZip $runtimeZip -SetupUiDir $setupUiDir
             Write-RuntimeStamp -SetupUiDir $setupUiDir -Sha256 $expectedRuntimeSha
         } finally {
-            Hide-BootstrapSplash -SplashProc $splash
+            Hide-BootstrapSplash -SplashStarted $splash
         }
     }
 

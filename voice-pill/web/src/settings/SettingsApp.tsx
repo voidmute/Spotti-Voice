@@ -15,7 +15,8 @@ import { AccountPanel } from "./AccountPanel";
 import { ModeSwitch, type SttMode } from "./ModeSwitch";
 import { SettingsTitleBar } from "./SettingsTitleBar";
 import { CloudAuthGate, fetchCloudSignedIn } from "./CloudAuthGate";
-import { ThemeToggle, readStoredTheme, persistTheme, type UiTheme } from "./ThemeToggle";
+import { readStoredTheme, persistTheme, type UiTheme } from "./ThemeToggle";
+import { useSettingsPanelMotion, useSettingsShellMotion } from "./motion";
 import "./settings.css";
 
 const LOCAL_STT_LANGUAGE = "ru";
@@ -118,11 +119,16 @@ export function SettingsApp() {
   const lastSavedFingerprintRef = useRef<string | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const authPromptedRef = useRef(false);
+  const appRef = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
 
   const sttMode = settings?.sttMode ?? "local";
   const isCloud = sttMode === "cloud";
 
   const visibleNav = useMemo(() => NAV_ITEMS, []);
+
+  useSettingsShellMotion(appRef, Boolean(settings));
+  useSettingsPanelMotion(stageRef, section);
 
   useEffect(() => {
     persistTheme(theme);
@@ -306,7 +312,7 @@ export function SettingsApp() {
               </div>
               <div>
                 <h2>История</h2>
-                <p>Последние фразы — копирование и удаление.</p>
+                <p>Последние фразы - копирование и удаление.</p>
               </div>
             </header>
             <HistoryPanel base={base} engineOnline={engineOnline === true} />
@@ -319,27 +325,29 @@ export function SettingsApp() {
 
   return (
     <div
+      ref={appRef}
       className={`settings-app settings-app--v2 settings-app--figjam${authGateOpen ? " is-auth-gate" : ""}`}
       data-theme={theme}
     >
-      <SettingsTitleBar theme={theme} />
+      <SettingsTitleBar
+        theme={theme}
+        onThemeChange={setTheme}
+        modeSwitch={
+          settings ? (
+            <ModeSwitch
+              className="mode-switch--titlebar"
+              value={sttMode}
+              onChange={(mode) => void onModeChange(mode)}
+              disabled={engineOnline !== true}
+            />
+          ) : null
+        }
+      />
 
       <div className="settings-body">
         <aside className="settings-sidebar">
           {settings ? (
-            <>
-              <SidebarNav value={section} items={visibleNav} onChange={onSectionChange} />
-              <div className="settings-sidebar-mode">
-                <span className="settings-sidebar-mode__label">Режим</span>
-                <ModeSwitch
-                  className="mode-switch--sidebar"
-                  value={sttMode}
-                  onChange={(mode) => void onModeChange(mode)}
-                  disabled={engineOnline !== true}
-                />
-              </div>
-              <ThemeToggle value={theme} onChange={setTheme} />
-            </>
+            <SidebarNav value={section} items={visibleNav} onChange={onSectionChange} />
           ) : (
             <div className="settings-sidebar__placeholder" />
           )}
@@ -352,7 +360,9 @@ export function SettingsApp() {
               <span>{status || "Загрузка…"}</span>
             </div>
           ) : (
-            <div className="settings-stage">{renderPanel()}</div>
+            <div ref={stageRef} className="settings-stage">
+              {renderPanel()}
+            </div>
           )}
         </main>
       </div>
