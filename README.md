@@ -1,30 +1,72 @@
 <div align="center">
+    <img width="220" src="./assets/brand-mark.png" alt="Spotti Voice"/>
+    <br/>
+    <br/>
+    <a href="https://git.io/typing-svg"><img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=28&duration=2800&pause=2500&color=5865F2&center=true&repeat=false&width=620&height=56&lines=Говори+%E2%80%94+текст+в+любом+окне!;Push-to-talk+для+Windows;Spotti+Voice" alt="Typing SVG"/></a>
+</div>
 
-# Spotti Voice
+<div align="center">
+    <a href="https://github.com/voidmute/Spotti-Voice/releases/latest"><img src="https://img.shields.io/badge/Скачать-SpottiVoice--Setup.exe-5865F2?style=for-the-badge&logo=windows&logoColor=white" alt="Download"/></a>
+    <a href="https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.21"><img src="https://img.shields.io/badge/версия-v0.1.0.21-22c55e?style=for-the-badge" alt="Version"/></a>
+    <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/Changelog-история%20релизов-fab387?style=for-the-badge" alt="Changelog"/></a>
+    <br/>
+    <a href="https://github.com/voidmute/Spotti-Voice/actions/workflows/ci.yml"><img src="https://img.shields.io/badge/CI-GitHub%20Actions-1C2325?style=for-the-badge&logo=githubactions&logoColor=white" alt="CI"/></a>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-eba0ac?style=for-the-badge" alt="MIT"/></a>
+    <a href="SECURITY.md"><img src="https://img.shields.io/badge/Security-политика-f5c2e7?style=for-the-badge" alt="Security"/></a>
+    <a href="CONTRIBUTING.md"><img src="https://img.shields.io/badge/Contributing-гайд-cba6f7?style=for-the-badge" alt="Contributing"/></a>
+    <br/>
+    <a href="https://spottibot.duckdns.org"><img src="https://img.shields.io/badge/Cloud-Spotti%20Servers-5865F2?style=for-the-badge" alt="Spotti Servers"/></a>
+</div>
 
-**Push-to-talk speech-to-text for Windows.** Floating pill, system tray, inject into any focused field.
-
-[![CI](https://github.com/voidmute/Spotti-Voice/actions/workflows/ci.yml/badge.svg)](https://github.com/voidmute/Spotti-Voice/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Releases](https://img.shields.io/badge/releases-v0.1.0.21-5865F2)](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.21)
-[![Spotti Servers](https://img.shields.io/badge/cloud-Spotti%20Servers-5865F2)](https://spottibot.duckdns.org)
-
-[Скачать релиз](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.21) · [Changelog](CHANGELOG.md) · [Безопасность](SECURITY.md) · [Contributing](CONTRIBUTING.md)
-
+<div align="center">
+    <img width="180" src="./assets/spotti-mascot.png" alt="Спотти — пиксельный помощник"/>
+    <br/>
+    <sub>При первом запуске Спотти проведёт короткое обучение на русском</sub>
 </div>
 
 ---
 
-## Зачем
+## 🎙️ Что это
 
-Говоришь — текст попадает в Discord, браузер, IDE, куда угодно, пока курсор в поле ввода. Два режима:
+**Spotti Voice** — десктопный голосовой ввод для Windows. Зажми горячую клавишу, говори — распознанный текст вставляется в активное поле (Discord, браузер, IDE, блокнот).
 
-| Режим | Сеть | Языки |
-|-------|------|--------|
-| **Локально** | Офлайн после загрузки модели (~142 MB) | Русский (`whisper.cpp`) |
-| **Облако** | TLS на Spotti Servers | Много; вход через Discord |
+| | |
+|---|---|
+| **Overlay** | Капсула над треем — статус записи |
+| **Tray** | Быстрый доступ к настройкам и выходу |
+| **Onboarding** | Один раз при первом старте — RPG-чат с пиксельным Спотти |
+| **Установщик** | Один файл `SpottiVoice-Setup.exe` (~0.5 MB), остальное с сервера |
 
-В облаке **не нужен** OpenAI-ключ на ПК. Токены — Windows DPAPI.
+```javascript
+const SpottiVoice = {
+    platform: "Windows 10+",
+    hotkey: { default: "Ctrl + Shift + Пробел", mode: "toggle PTT" },
+    modes: {
+        local: { network: "offline", language: "русский", engine: "whisper.cpp" },
+        cloud: { network: "TLS", auth: "Discord OAuth", stt: "Spotti Servers" },
+    },
+    stack: {
+        shell: ["Electron", "React", "anime.js"],
+        engine: ["Python", "FastAPI", "sounddevice"],
+        installer: ["NSIS thin bootstrap", "Electron setup wizard"],
+    },
+    security: {
+        engineBind: "127.0.0.1:9777",
+        electron: "contextIsolation + narrow preload",
+        tokens: "Windows DPAPI",
+    },
+};
+```
+
+## ⚡ Режимы
+
+| Режим | Сеть | Языки | Вход |
+|-------|------|--------|------|
+| **Локально** | Офлайн после модели (~142 MB) | Русский | Не нужен |
+| **Облако** | TLS на Spotti Servers | Много (auto) | Discord |
+
+> [!TIP]
+> В облаке **не нужен** OpenAI-ключ на ПК. Токены хранятся через Windows DPAPI.
 
 ```mermaid
 flowchart LR
@@ -44,18 +86,33 @@ flowchart LR
   Engine -->|inject| Focus[Focused app]
 ```
 
-## Установка (пользователи)
+---
 
-1. Скачайте **`SpottiVoice-Setup.exe`** из [Releases](https://github.com/voidmute/Spotti-Voice/releases) и запустите (один файл, Python/Node не нужны).
-2. Откройте **Spotti Voice** из меню Пуск.
-3. **Облако:** Настройки → Облако → **Войти через Discord**.
-4. **Локально:** Настройки → Локально → при первом запуске скачается модель.
+## 📥 Установка
 
-Горячая клавиша по умолчанию: **Ctrl+Shift+Space** (toggle PTT). Меню в трее → **Setup**.
+<details open>
+<summary><h3>🚀 Быстрый старт (пользователи)</h3></summary>
 
-## Сборка из исходников
+1. Скачайте **`SpottiVoice-Setup.exe`** из [Releases](https://github.com/voidmute/Spotti-Voice/releases/latest).
+2. Запустите установщик — мастер скачает приложение с сервера.
+3. При **первом запуске** откроются настройки и обучение со Спотти (один раз).
+4. **Облако:** переключатель вверху → **Аккаунт** → **Войти через Discord**.
+5. **Локально:** при первом PTT скачается модель whisper.
 
-**Требования:** Windows 10+, Python 3.11+, Node 20+, NSIS 3.x (для установщика).
+| Шаг | Действие |
+|-----|----------|
+| Запись | **Ctrl+Shift+Пробел** (по умолчанию) — toggle PTT |
+| Настройки | Иконка в трее → **Setup** |
+| Горячая клавиша | Настройки → **Горячая клавиша** |
+
+[![Download](https://img.shields.io/badge/⬇_SpottiVoice--Setup.exe-v0.1.0.21-5865F2?style=flat-square)](https://github.com/voidmute/Spotti-Voice/releases/download/v0.1.0.21/SpottiVoice-Setup.exe)
+
+</details>
+
+<details>
+<summary><h3>🛠 Сборка из исходников</h3></summary>
+
+**Требования:** Windows 10+, Python 3.11+, Node 20+, NSIS 3.x.
 
 ```bat
 cd voice-pill
@@ -63,7 +120,10 @@ build-exe.bat
 build-setup.bat
 ```
 
-Артефакт: `voice-pill\dist-setup\SpottiVoice-Setup.exe` (один файл NSIS)
+| Скрипт | Результат |
+|--------|-----------|
+| `build-exe.bat` | Portable payload в `dist/` |
+| `build-setup.bat` | `dist-setup/SpottiVoice-Setup.exe` |
 
 Разработка без установщика:
 
@@ -72,28 +132,90 @@ cd voice-pill
 run.bat
 ```
 
-Подробнее: [voice-pill/README.md](voice-pill/README.md) (в монорепо Spotti) · [RELEASE.md](voice-pill/RELEASE.md)
+Подробнее: [voice-pill/README.md](voice-pill/README.md) · [voice-pill/RELEASE.md](voice-pill/RELEASE.md)
 
-## Окружение (только разработка)
+</details>
 
-Скопируйте `.env.example` → `voice-pill/.env`. Ключ `SPOTTI_VOICE_API_BASE` — если тестируете staging API. **Не коммитьте `.env`.**
+<details>
+<summary><h3>🔐 Безопасность</h3></summary>
 
-## Безопасность
+- Движок слушает только **`127.0.0.1:9777`**
+- Electron: **`contextIsolation: true`**, узкий preload-мост
+- OAuth: `spotti-voice://auth/callback` (регистрирует установщик)
 
-- Движок слушает только `127.0.0.1:9777`.
-- Electron: `contextIsolation: true`, узкий preload-мост.
-- OAuth: `spotti-voice://auth/callback` (регистрирует установщик); в dev Electron — `http://127.0.0.1:9780/auth/callback`.
+> [!CAUTION]
+> Не коммитьте `.env`. См. [SECURITY.md](SECURITY.md)
 
-Полный текст: [SECURITY.md](SECURITY.md)
+</details>
 
-## CI
+<details>
+<summary><h3>🧪 CI и тесты</h3></summary>
 
-На каждый push/PR в `main`: secret scan, `pytest tests/voice_pill/`, сборка web UI. См. [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
+На каждый push/PR в `main`:
 
-## Связь с Spotti
+- Secret scan
+- `pytest tests/voice_pill/`
+- Сборка web UI
 
-Публичный клиент + этот репозиторий. Сервер OAuth/STT — приватный монорепо [Spotti](https://github.com/voidmute/Spotti) (`spotti/api/routes/voice_app.py`). Экспорт из монорепо: `scripts/migrate/export-voice-public.ps1`.
+См. [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
 
-## Лицензия
+```powershell
+pytest tests/voice_pill/ -q
+```
 
-[MIT](LICENSE)
+</details>
+
+---
+
+## 🏗 Архитектура
+
+```mermaid
+sequenceDiagram
+  participant User
+  participant Electron
+  participant Engine as voice_pill engine
+  participant Server as Spotti API
+  User->>Electron: PTT hotkey
+  Electron->>Engine: HTTP localhost:9777
+  alt Cloud mode
+    Engine->>Server: STT + Bearer token
+  else Local mode
+    Engine->>Engine: whisper.cpp
+  end
+  Engine->>User: inject text
+```
+
+## 🔗 Связь с Spotti
+
+| Репозиторий | Роль |
+|-------------|------|
+| **[Spotti-Voice](https://github.com/voidmute/Spotti-Voice)** (этот) | Публичный клиент + установщик |
+| **[Spotti](https://github.com/voidmute/Spotti)** (приватный) | Сервер OAuth/STT, монорепо |
+
+Экспорт из монорепо:
+
+```powershell
+.\scripts\migrate\export-voice-public.ps1 -OutDir ..\Spotti-Voice
+```
+
+---
+
+<div align="center">
+
+### 📊 Репозиторий
+
+[![Spotti-Voice repo card](https://github-readme-stats.vercel.app/api/pin/?username=voidmute&repo=Spotti-Voice&theme=transparent&hide_border=true&title_color=5865F2)](https://github.com/voidmute/Spotti-Voice)
+
+[![GitHub stars](https://img.shields.io/github/stars/voidmute/Spotti-Voice?style=social)](https://github.com/voidmute/Spotti-Voice/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/voidmute/Spotti-Voice?style=social)](https://github.com/voidmute/Spotti-Voice/network/members)
+[![GitHub release](https://img.shields.io/github/v/release/voidmute/Spotti-Voice?label=latest&style=social)](https://github.com/voidmute/Spotti-Voice/releases)
+
+<br/>
+
+**[Скачать v0.1.0.21](https://github.com/voidmute/Spotti-Voice/releases/tag/v0.1.0.21)** · [Changelog](CHANGELOG.md) · [Issues](https://github.com/voidmute/Spotti-Voice/issues)
+
+<br/>
+
+[MIT](LICENSE) · Spotti Voice © [voidmute](https://github.com/voidmute)
+
+</div>
