@@ -1,4 +1,4 @@
-; Spotti Voice — thin bootstrap installer (assets on VPS, ~20 MB local stub).
+; Spotti Voice — thin bootstrap installer (assets on Server, ~20 MB local stub).
 ; Build: voice-pill\build-setup.bat
 
 !include "LogicLib.nsh"

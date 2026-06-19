@@ -98,11 +98,11 @@ sequenceDiagram
   participant User
   participant Electron
   participant Engine as voice_pill engine
-  participant VPS as Spotti API
+  participant Server as Spotti API
   User->>Electron: PTT hotkey
   Electron->>Engine: HTTP localhost:9777
   alt Cloud mode
-    Engine->>VPS: STT + Bearer token
+    Engine->>Server: STT + Bearer token
   else Local mode
     Engine->>Engine: whisper.cpp
   end
@@ -111,5 +111,5 @@ sequenceDiagram
 
 ## See also
 
-- [Spotti monorepo README](../README.md) — VPS `voice_app` routes
+- [Spotti monorepo README](../README.md) — Server `voice_app` routes
 - [Spotti-Voice public README](https://github.com/voidmute/Spotti-Voice/blob/main/README.md)

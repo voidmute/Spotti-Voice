@@ -1,4 +1,4 @@
-# manifest.json for VPS-hosted Spotti Voice installer assets.
+# manifest.json for Server-hosted Spotti Voice installer assets.
 param(
     [Parameter(Mandatory = $true)][string]$Version,
     [Parameter(Mandatory = $true)][string]$OutFile,

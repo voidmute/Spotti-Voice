@@ -1,4 +1,4 @@
-# Silent thin bootstrap: fetch manifest + setup runtime from VPS, launch polished setup wizard.
+# Silent thin bootstrap: fetch manifest + setup runtime from Server, launch polished setup wizard.
 param(
     [Parameter(Mandatory = $true)][string]$PluginDir
 )

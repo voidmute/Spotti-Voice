@@ -1,4 +1,4 @@
-# Build thin SpottiVoice-Setup.exe (VPS-hosted assets, local stub under 20 MB).
+# Build thin SpottiVoice-Setup.exe (Server-hosted assets, local stub under 20 MB).
 param(
     [Parameter(Mandatory = $true)][string]$OutFile,
     [Parameter(Mandatory = $true)][string]$Version,
@@ -61,4 +61,4 @@ $sizeMb = (Get-Item -LiteralPath $OutFile).Length / 1MB
 if ($sizeMb -gt $MaxSizeMb) {
     throw "Thin installer is $([math]::Round($sizeMb, 1)) MB (max $MaxSizeMb MB). Remove bundled assets from NSIS."
 }
-Write-Host "[OK] thin installer: $OutFile ($([math]::Round($sizeMb, 1)) MB, VPS-hosted assets)"
+Write-Host "[OK] thin installer: $OutFile ($([math]::Round($sizeMb, 1)) MB, Server-hosted assets)"
