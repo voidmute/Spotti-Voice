@@ -198,14 +198,16 @@ function Test-RuntimeCacheValid {
 
 function Show-BootstrapSplash {
     param([string]$PluginDir)
-    $ps1 = Join-Path $PluginDir "bootstrap-splash.ps1"
+    $hta = Join-Path $PluginDir "bootstrap-splash.hta"
     $vbs = Join-Path $PluginDir "bootstrap-splash-launch.vbs"
-    if (-not (Test-Path -LiteralPath $ps1)) { return $false }
+    if (-not (Test-Path -LiteralPath $hta)) { return $false }
     if (-not (Test-Path -LiteralPath $vbs)) { return $false }
     try {
+        Clear-BootstrapSplash
+        Start-Sleep -Milliseconds 200
         $env:SPOTTI_SPLASH_OWNER = "$PID"
         $null = Start-Process -FilePath "wscript.exe" `
-            -ArgumentList "//B //Nologo `"$vbs`" `"$ps1`"" `
+            -ArgumentList "//B //Nologo `"$vbs`" `"$hta`"" `
             -WindowStyle Hidden `
             -PassThru
         return $true
@@ -241,6 +243,11 @@ function Clear-BootstrapSplash {
     }
 
     try {
+        Get-CimInstance Win32_Process -Filter "Name='mshta.exe'" -ErrorAction SilentlyContinue |
+            Where-Object { $_.CommandLine -match 'bootstrap-splash\.hta' } |
+            ForEach-Object {
+                Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
+            }
         Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" -ErrorAction SilentlyContinue |
             Where-Object { $_.CommandLine -match 'bootstrap-splash\.ps1' } |
             ForEach-Object {

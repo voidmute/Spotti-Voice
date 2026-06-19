@@ -22,6 +22,8 @@ $window.ShowInTaskbar = $false
 $window.WindowStartupLocation = [System.Windows.WindowStartupLocation]::CenterScreen
 $window.ResizeMode = [System.Windows.ResizeMode]::NoResize
 $window.IsHitTestVisible = $false
+$window.UseLayoutRounding = $true
+$window.SnapsToDevicePixels = $true
 
 $size = 24.0
 $thickness = 2.5
@@ -42,7 +44,6 @@ $arc.StrokeThickness = $thickness
 $arc.Fill = [System.Windows.Media.Brushes]::Transparent
 $arc.StrokeStartLineCap = [System.Windows.Media.PenLineCap]::Round
 $arc.StrokeEndLineCap = [System.Windows.Media.PenLineCap]::Round
-# ~25% visible arc on circumference (pi * 24 ~= 75)
 $dash = New-Object System.Windows.Media.DoubleCollection
 [void]$dash.Add(18.5)
 [void]$dash.Add(57.0)
@@ -60,10 +61,22 @@ $grid = New-Object System.Windows.Controls.Grid
 [void]$grid.Children.Add($arc)
 $window.Content = $grid
 
+$spinMs = 16.0
+$degPerMs = 360.0 / 850.0
+
 $window.Add_Closed({
+    if ($script:spinTimer) { $script:spinTimer.Stop() }
+    if ($script:stopTimer) { $script:stopTimer.Stop() }
     Remove-Item -LiteralPath $pidPath -Force -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath $stopPath -Force -ErrorAction SilentlyContinue
 })
+
+$script:spinTimer = New-Object System.Windows.Threading.DispatcherTimer
+$script:spinTimer.Interval = [TimeSpan]::FromMilliseconds($spinMs)
+$script:spinTimer.Add_Tick({
+    $rotate.Angle = ($rotate.Angle + ($degPerMs * $spinMs)) % 360.0
+})
+$script:spinTimer.Start()
 
 $script:stopTimer = New-Object System.Windows.Threading.DispatcherTimer
 $script:stopTimer.Interval = [TimeSpan]::FromMilliseconds(100)
@@ -87,23 +100,6 @@ $script:stopTimer.Add_Tick({
     }
 })
 $script:stopTimer.Start()
-
-$window.Add_Loaded({
-    $anim = New-Object System.Windows.Media.Animation.DoubleAnimation
-    $anim.From = 0
-    $anim.To = 360
-    $anim.Duration = [System.Windows.Duration]::new([TimeSpan]::FromSeconds(0.85))
-    $anim.RepeatBehavior = [System.Windows.Media.Animation.RepeatBehavior]::Forever
-
-    $storyboard = New-Object System.Windows.Media.Animation.Storyboard
-    [void]$storyboard.Children.Add($anim)
-    [System.Windows.Media.Animation.Storyboard]::SetTarget($anim, $rotate)
-    [System.Windows.Media.Animation.Storyboard]::SetTargetProperty(
-        $anim,
-        (New-Object System.Windows.PropertyPath([System.Windows.Media.RotateTransform]::AngleProperty))
-    )
-    [void]$storyboard.Begin()
-})
 
 [void]$window.Show()
 [System.Windows.Threading.Dispatcher]::Run()
