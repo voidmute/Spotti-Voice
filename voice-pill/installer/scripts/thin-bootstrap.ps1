@@ -196,6 +196,22 @@ function Test-RuntimeCacheValid {
     return $stamp -eq $ExpectedSha256.ToLower()
 }
 
+function Hide-PowerShellConsole {
+    try {
+        $sig = @'
+[DllImport("kernel32.dll")] public static extern IntPtr GetConsoleWindow();
+[DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+'@
+        Add-Type -MemberDefinition $sig -Name ConsoleWin -Namespace SpottiBootstrap -ErrorAction SilentlyContinue
+        $hwnd = [SpottiBootstrap.ConsoleWin]::GetConsoleWindow()
+        if ($hwnd -ne [IntPtr]::Zero) {
+            [void][SpottiBootstrap.ConsoleWin]::ShowWindow($hwnd, 0)
+        }
+    } catch {
+        # ignore
+    }
+}
+
 function Test-BootstrapSplashRunning {
     $pidPath = Join-Path $env:TEMP "SpottiVoice-splash.pid"
     if (-not (Test-Path -LiteralPath $pidPath)) { return $false }
@@ -212,13 +228,16 @@ function Show-BootstrapSplash {
     param([string]$PluginDir)
     if (Test-BootstrapSplashRunning) { return $true }
     $splash = Join-Path $PluginDir "bootstrap-splash.ps1"
+    $vbs = Join-Path $PluginDir "bootstrap-splash-launch.vbs"
     if (-not (Test-Path -LiteralPath $splash)) { return $false }
+    if (-not (Test-Path -LiteralPath $vbs)) { return $false }
     try {
         $env:SPOTTI_SPLASH_OWNER = "$PID"
-        $null = Start-Process -FilePath "powershell.exe" `
-            -ArgumentList "-NoProfile -STA -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$splash`"" `
+        $null = Start-Process -FilePath "wscript.exe" `
+            -ArgumentList "//B //Nologo `"$vbs`" `"$splash`"" `
+            -WindowStyle Hidden `
             -PassThru
-        Start-Sleep -Milliseconds 300
+        Start-Sleep -Milliseconds 500
         return (Test-BootstrapSplashRunning)
     } catch {
         return $false
@@ -348,6 +367,7 @@ function Write-SetupConfig {
 }
 
 try {
+    Hide-PowerShellConsole
     Enable-Tls12
     Write-Log "bootstrap start pluginDir=$PluginDir"
     Show-BootstrapSplash -PluginDir $PluginDir | Out-Null

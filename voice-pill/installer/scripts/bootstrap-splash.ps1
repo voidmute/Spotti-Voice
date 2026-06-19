@@ -1,4 +1,6 @@
-# Borderless spinning white arc — no console, no taskbar, no text caret.
+# WinForms spinner — visible on all desktops; no console caret.
+$ErrorActionPreference = "Stop"
+
 $pidPath = Join-Path $env:TEMP "SpottiVoice-splash.pid"
 $stopPath = Join-Path $env:TEMP "SpottiVoice-splash.stop"
 Remove-Item -LiteralPath $stopPath -Force -ErrorAction SilentlyContinue
@@ -9,91 +11,89 @@ if ($env:SPOTTI_SPLASH_OWNER) {
     [void][int]::TryParse($env:SPOTTI_SPLASH_OWNER, [ref]$ownerPid)
 }
 
-Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
+try {
+    $consoleSig = @'
+[DllImport("kernel32.dll")] public static extern IntPtr GetConsoleWindow();
+[DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+'@
+    Add-Type -MemberDefinition $consoleSig -Name ConsoleWin -Namespace SpottiSplash -ErrorAction SilentlyContinue
+    $hwnd = [SpottiSplash.ConsoleWin]::GetConsoleWindow()
+    if ($hwnd -ne [IntPtr]::Zero) {
+        [void][SpottiSplash.ConsoleWin]::ShowWindow($hwnd, 0)
+    }
+} catch {
+    # ignore
+}
 
-$window = New-Object System.Windows.Window
-$window.Width = 40
-$window.Height = 40
-$window.WindowStyle = [System.Windows.WindowStyle]::None
-$window.AllowsTransparency = $true
-$window.Background = [System.Windows.Media.Brushes]::Transparent
-$window.Topmost = $true
-$window.ShowInTaskbar = $false
-$window.WindowStartupLocation = [System.Windows.WindowStartupLocation]::CenterScreen
-$window.ResizeMode = [System.Windows.ResizeMode]::NoResize
-$window.IsHitTestVisible = $false
-$window.Focusable = $false
-$window.ShowActivated = $false
-$window.UseLayoutRounding = $true
-$window.SnapsToDevicePixels = $true
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
 
-$size = 28.0
-$thickness = 3.0
+$script:spinAngle = 0.0
 
-$arc = New-Object System.Windows.Shapes.Ellipse
-$arc.Width = $size
-$arc.Height = $size
-$arc.Stroke = [System.Windows.Media.Brushes]::White
-$arc.StrokeThickness = $thickness
-$arc.Fill = [System.Windows.Media.Brushes]::Transparent
-$arc.StrokeStartLineCap = [System.Windows.Media.PenLineCap]::Round
-$arc.StrokeEndLineCap = [System.Windows.Media.PenLineCap]::Round
-$dash = New-Object System.Windows.Media.DoubleCollection
-[void]$dash.Add(20.0)
-[void]$dash.Add(68.0)
-$arc.StrokeDashArray = $dash
+$form = New-Object System.Windows.Forms.Form
+$form.Text = "Spotti Voice"
+$form.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::None
+$form.StartPosition = [System.Windows.Forms.FormStartPosition]::CenterScreen
+$form.Size = New-Object System.Drawing.Size(72, 72)
+$form.BackColor = [System.Drawing.Color]::FromArgb(36, 36, 40)
+$form.ForeColor = [System.Drawing.Color]::White
+$form.ShowInTaskbar = $false
+$form.TopMost = $true
+$form.Opacity = 0.96
+$form.KeyPreview = $true
+$form.Add_KeyDown({ param($s, $e) $e.Handled = $true })
 
-$rotate = New-Object System.Windows.Media.RotateTransform
-$rotate.Angle = 0
-$rotate.CenterX = $size / 2
-$rotate.CenterY = $size / 2
-$arc.RenderTransform = $rotate
-$arc.RenderTransformOrigin = New-Object System.Windows.Point(0.5, 0.5)
+$form.Add_Paint({
+    param($sender, $e)
+    $g = $e.Graphics
+    $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
+    $rect = New-Object System.Drawing.RectangleF 16.0, 16.0, 40.0, 40.0
+    $trackPen = New-Object System.Drawing.Pen ([System.Drawing.Color]::FromArgb(70, 255, 255, 255)), 4.0
+    $trackPen.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
+    $trackPen.EndCap = [System.Drawing.Drawing2D.LineCap]::Round
+    $arcPen = New-Object System.Drawing.Pen ([System.Drawing.Color]::White, 4.0)
+    $arcPen.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
+    $arcPen.EndCap = [System.Drawing.Drawing2D.LineCap]::Round
+    $g.DrawArc($trackPen, $rect, 0.0, 360.0)
+    $state = $g.Save()
+    $g.TranslateTransform(36.0, 36.0)
+    $g.RotateTransform($script:spinAngle)
+    $g.TranslateTransform(-36.0, -36.0)
+    $g.DrawArc($arcPen, $rect, 0.0, 280.0)
+    $g.Restore($state)
+    $trackPen.Dispose()
+    $arcPen.Dispose()
+})
 
-$grid = New-Object System.Windows.Controls.Grid
-$grid.Focusable = $false
-[void]$grid.Children.Add($arc)
-$window.Content = $grid
-
-$spinMs = 16.0
-$degPerMs = 360.0 / 850.0
-
-$window.Add_Closed({
-    if ($script:spinTimer) { $script:spinTimer.Stop() }
-    if ($script:stopTimer) { $script:stopTimer.Stop() }
+$form.Add_FormClosed({
+    if ($script:spinTimer) { $script:spinTimer.Stop(); $script:spinTimer.Dispose() }
+    if ($script:stopTimer) { $script:stopTimer.Stop(); $script:stopTimer.Dispose() }
     Remove-Item -LiteralPath $pidPath -Force -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath $stopPath -Force -ErrorAction SilentlyContinue
 })
 
-$script:spinTimer = New-Object System.Windows.Threading.DispatcherTimer
-$script:spinTimer.Interval = [TimeSpan]::FromMilliseconds($spinMs)
+$script:spinTimer = New-Object System.Windows.Forms.Timer
+$script:spinTimer.Interval = 16
 $script:spinTimer.Add_Tick({
-    $rotate.Angle = ($rotate.Angle + ($degPerMs * $spinMs)) % 360.0
+    $script:spinAngle = ($script:spinAngle + 6.0) % 360.0
+    $form.Invalidate()
 })
 $script:spinTimer.Start()
 
-$script:stopTimer = New-Object System.Windows.Threading.DispatcherTimer
-$script:stopTimer.Interval = [TimeSpan]::FromMilliseconds(100)
+$script:stopTimer = New-Object System.Windows.Forms.Timer
+$script:stopTimer.Interval = 100
 $script:stopTimer.Add_Tick({
     if (Test-Path -LiteralPath $stopPath) {
-        $script:stopTimer.Stop()
-        $window.Close()
+        $form.Close()
         return
     }
     if ($ownerPid -gt 0) {
-        $ownerAlive = $false
-        try {
-            $ownerAlive = $null -ne (Get-Process -Id $ownerPid -ErrorAction Stop)
-        } catch {
-            $ownerAlive = $false
-        }
-        if (-not $ownerAlive) {
-            $script:stopTimer.Stop()
-            $window.Close()
-        }
+        $alive = $false
+        try { $alive = $null -ne (Get-Process -Id $ownerPid -ErrorAction Stop) } catch { $alive = $false }
+        if (-not $alive) { $form.Close() }
     }
 })
 $script:stopTimer.Start()
 
-[void]$window.Show()
-[System.Windows.Threading.Dispatcher]::Run()
+[void]$form.Show()
+[System.Windows.Forms.Application]::Run($form)

@@ -65,6 +65,8 @@ const rceditOptions = {
 };
 if (requireAdmin) {
   rceditOptions["requested-execution-level"] = "requireAdministrator";
+} else {
+  rceditOptions["requested-execution-level"] = "asInvoker";
 }
 
 await rcedit(workTarget, rceditOptions);

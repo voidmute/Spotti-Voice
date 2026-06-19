@@ -36,6 +36,20 @@ Function .onInit
   ${GetOptions} $R0 "/stubcache" $R1
   StrCmp $R1 "1" bootstrap_run
 
+  ; Temp relaunch only from Downloads (file-lock workaround). Else one launch, no extra prompt.
+  StrCpy $R2 $EXEPATH
+  StrLen $R3 $R2
+  StrCpy $R4 0
+dl_scan:
+  IntCmp $R4 $R3 bootstrap_run
+  StrCpy $R5 $R2 9 $R4
+  StrCmp $R5 "Downloads" dl_relaunch
+  StrCpy $R5 $R2 9 $R4
+  StrCmp $R5 "downloads" dl_relaunch
+  IntOp $R4 $R4 + 1
+  Goto dl_scan
+
+dl_relaunch:
   CreateDirectory "$TEMP\SpottiVoice\stub"
   CopyFiles /SILENT "$EXEPATH" "$TEMP\SpottiVoice\stub\SpottiVoice-Setup.exe"
   Exec '"$TEMP\SpottiVoice\stub\SpottiVoice-Setup.exe" /stubcache=1'
@@ -51,6 +65,7 @@ Section "Bootstrap"
   File "..\scripts\thin-bootstrap.ps1"
   File "..\scripts\run-bootstrap-hidden.vbs"
   File "..\scripts\bootstrap-splash.ps1"
+  File "..\scripts\bootstrap-splash-launch.vbs"
   File "..\..\dist-setup\bootstrap-manifest.json"
 
   SetOutPath "$PLUGINSDIR\vc-runtime"
@@ -62,7 +77,8 @@ Section "Bootstrap"
   File "..\prereqs\vc-runtime-x64\concrt140.dll"
 
   DetailPrint "Preparing Spotti Voice setup..."
-  Exec '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -STA -WindowStyle Hidden -ExecutionPolicy Bypass -File "$PLUGINSDIR\bootstrap-splash.ps1"'
+  Exec '"$SYSDIR\wscript.exe" //B //Nologo "$PLUGINSDIR\bootstrap-splash-launch.vbs" "$PLUGINSDIR\bootstrap-splash.ps1"'
+  Sleep 800
   ExecWait '"$SYSDIR\wscript.exe" //B //Nologo "$PLUGINSDIR\run-bootstrap-hidden.vbs" "$PLUGINSDIR"' $0
 
   ${If} $0 != 0
