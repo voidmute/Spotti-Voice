@@ -1,5 +1,17 @@
 # Contributing to Spotti Voice
 
+## Repository access
+
+This repository is **maintained by [@voidmute](https://github.com/voidmute) only**.
+
+| Action | Who |
+|--------|-----|
+| Push to `main` | **Owner only** (`voidmute`) |
+| Fork & experiment | Anyone |
+| Pull requests | Welcome — owner reviews and merges |
+
+Direct write access is not granted to collaborators. Fork the repo, branch in your fork, then open a PR if you want changes considered upstream.
+
 ## Setup
 
 ```bat

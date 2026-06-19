@@ -1,0 +1,19 @@
+name: Protect main
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  owner-only-push:
+    name: Owner-only direct push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Reject non-owner push to main
+        if: github.actor != 'voidmute'
+        run: |
+          echo "::error::Only @voidmute may push to main. Fork the repo and open a pull request."
+          exit 1

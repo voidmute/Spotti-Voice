@@ -65,9 +65,6 @@ const SpottiVoice = {
 | **Локально** | Офлайн после модели (~142 MB) | Русский | Не нужен |
 | **Облако** | TLS на Spotti Servers | Много (auto) | Discord |
 
-> [!TIP]
-> В облаке **не нужен** OpenAI-ключ на ПК. Токены хранятся через Windows DPAPI.
-
 ```mermaid
 flowchart LR
   subgraph pc [Ваш ПК]
