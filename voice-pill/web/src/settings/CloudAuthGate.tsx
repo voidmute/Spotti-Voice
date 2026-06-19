@@ -77,19 +77,25 @@ export function CloudAuthGate({
         overflow: hidden !important;
         background: #313338 !important;
       }
-      body > * {
+      body > div, #app-mount, .authBox, .centeringWrapper, form {
+        width: 100% !important;
         max-width: 100% !important;
+        min-height: 0 !important;
+        box-sizing: border-box !important;
+      }
+      .mainLoginContainer, .characterBackground, .wrapper-3QjDdY {
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      ::-webkit-scrollbar {
+        width: 0 !important;
+        height: 0 !important;
       }
     `;
 
-    const onNavigate = (event: Event & { url?: string; preventDefault?: () => void }) => {
-      const url = event.url;
-      if (!url || !isOAuthCallbackUrl(url)) return;
-      event.preventDefault?.();
-      void finishOAuth(url);
-    };
-
-    const onDomReady = () => {
+    const applyWebviewFit = () => {
       try {
         wv.setZoomFactor?.(1);
         wv.insertCSS?.(oauthCss);
@@ -98,16 +104,33 @@ export function CloudAuthGate({
       }
     };
 
+    const onDomReady = () => {
+      applyWebviewFit();
+    };
+
+    const onFinishLoad = () => {
+      applyWebviewFit();
+    };
+
+    const onNavigate = (event: Event & { url?: string; preventDefault?: () => void }) => {
+      const url = event.url;
+      if (!url || !isOAuthCallbackUrl(url)) return;
+      event.preventDefault?.();
+      void finishOAuth(url);
+    };
+
     wv.addEventListener("will-navigate", onNavigate as EventListener);
     wv.addEventListener("did-navigate", onNavigate as EventListener);
     wv.addEventListener("did-navigate-in-page", onNavigate as EventListener);
     wv.addEventListener("dom-ready", onDomReady as EventListener);
+    wv.addEventListener("did-finish-load", onFinishLoad as EventListener);
 
     return () => {
       wv.removeEventListener("will-navigate", onNavigate as EventListener);
       wv.removeEventListener("did-navigate", onNavigate as EventListener);
       wv.removeEventListener("did-navigate-in-page", onNavigate as EventListener);
       wv.removeEventListener("dom-ready", onDomReady as EventListener);
+      wv.removeEventListener("did-finish-load", onFinishLoad as EventListener);
     };
   }, [authorizeUrl]);
 

@@ -726,7 +726,12 @@ ipcMain.handle("setup:install", async (event, rawOptions) => {
       }
     }
 
-    setTimeout(() => app.quit(0), 1800);
+    setTimeout(() => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.close();
+      }
+      app.quit(0);
+    }, 500);
     return { ok: true, installDir };
   } catch (err) {
     if (String(err?.message || err) === "cancelled") {

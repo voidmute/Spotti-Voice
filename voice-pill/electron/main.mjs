@@ -330,6 +330,7 @@ let uninstallWindow = null;
 let tray = null;
 /** @type {BrowserWindow | null} */
 let trayMenuWindow = null;
+let currentUiTheme = "light";
 /** @type {{ tray: Electron.NativeImage; window: Electron.NativeImage; path: string } | null} */
 let appIcons = null;
 
@@ -1091,6 +1092,31 @@ function applyTrayMenuWindowShape(win, width, height) {
   }
 }
 
+function pushTrayMenuTheme(theme) {
+  if (!trayMenuWindow || trayMenuWindow.isDestroyed()) return;
+  const dark = theme === "dark";
+  const logo = dark ? "white-only.png" : "brand-mark.png";
+  void trayMenuWindow.webContents
+    .executeJavaScript(
+      `(() => {
+        document.documentElement.setAttribute("data-theme", ${JSON.stringify(theme)});
+        const img = document.querySelector(".menu-header img");
+        if (img) img.src = "../web/dist/${logo}";
+      })();`,
+      true,
+    )
+    .catch(() => {});
+}
+
+function applyUiTheme(theme) {
+  if (theme !== "light" && theme !== "dark") return;
+  currentUiTheme = theme;
+  if (settingsWindow && !settingsWindow.isDestroyed()) {
+    settingsWindow.setBackgroundColor(theme === "dark" ? "#0c0c0d" : "#f4f2ee");
+  }
+  pushTrayMenuTheme(theme);
+}
+
 function playTrayMenuEntrance(win) {
   if (!win || win.isDestroyed()) return;
   void win.webContents
@@ -1173,6 +1199,7 @@ function revealTrayMenu() {
   const [w, h] = trayMenuWindow.getContentSize();
   applyTrayMenuWindowShape(trayMenuWindow, w, h);
   pinOverlayOnTop(trayMenuWindow);
+  pushTrayMenuTheme(currentUiTheme);
   playTrayMenuEntrance(trayMenuWindow);
   trayMenuWindow.show();
   trayMenuWindow.focus();
@@ -1219,6 +1246,7 @@ function showTrayMenu() {
     positionTrayMenuWindow();
     const [w, h] = trayMenuWindow?.getContentSize() ?? [TRAY_MENU_WIDTH, TRAY_MENU_HEIGHT];
     applyTrayMenuWindowShape(trayMenuWindow, w, h);
+    pushTrayMenuTheme(currentUiTheme);
   });
   trayMenuWindow.on("show", () => pinOverlayOnTop(trayMenuWindow));
   trayMenuWindow.on("focus", () => pinOverlayOnTop(trayMenuWindow));
@@ -1736,8 +1764,7 @@ ipcMain.handle("voice:window-close", (event) => {
 ipcMain.handle("voice:set-ui-theme", (event, theme) => {
   if (!isTrustedSender(event)) throw new Error("Untrusted IPC sender");
   if (theme !== "light" && theme !== "dark") throw new Error("Invalid UI theme");
-  const win = settingsWindowFromEvent(event);
-  win.setBackgroundColor(theme === "dark" ? "#0c0c0d" : "#f4f2ee");
+  applyUiTheme(theme);
   return true;
 });
 

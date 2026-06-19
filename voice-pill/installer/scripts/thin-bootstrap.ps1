@@ -217,16 +217,28 @@ function Hide-BootstrapSplash {
     param($SplashStarted)
     if (-not $SplashStarted) { return }
     $pidPath = Join-Path $env:TEMP "SpottiVoice-splash.pid"
-    if (-not (Test-Path -LiteralPath $pidPath)) { return }
+    $stopPath = Join-Path $env:TEMP "SpottiVoice-splash.stop"
     try {
-        $splashPid = [int](Get-Content -LiteralPath $pidPath -Raw).Trim()
-        if ($splashPid -gt 0) {
-            Stop-Process -Id $splashPid -Force -ErrorAction SilentlyContinue
+        Set-Content -LiteralPath $stopPath -Value "1" -Encoding ASCII -Force
+    } catch {
+        # ignore
+    }
+    for ($attempt = 0; $attempt -lt 20; $attempt++) {
+        if (-not (Test-Path -LiteralPath $pidPath)) { return }
+        Start-Sleep -Milliseconds 80
+    }
+    try {
+        if (Test-Path -LiteralPath $pidPath) {
+            $splashPid = [int](Get-Content -LiteralPath $pidPath -Raw).Trim()
+            if ($splashPid -gt 0) {
+                Stop-Process -Id $splashPid -Force -ErrorAction SilentlyContinue
+            }
         }
     } catch {
         # ignore
     } finally {
         Remove-Item -LiteralPath $pidPath -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $stopPath -Force -ErrorAction SilentlyContinue
     }
 }
 
@@ -272,6 +284,7 @@ function Write-SetupConfig {
 try {
     Enable-Tls12
     Write-Log "bootstrap start pluginDir=$PluginDir"
+    $splash = $null
 
     $stubPath = Join-Path $PluginDir "bootstrap-manifest.json"
     if (-not (Test-Path -LiteralPath $stubPath)) {
@@ -341,8 +354,10 @@ try {
         -WorkingDirectory $runtimeDir `
         -PassThru `
         -Wait
+    Hide-BootstrapSplash -SplashStarted $splash
     exit $proc.ExitCode
 } catch {
+    Hide-BootstrapSplash -SplashStarted $splash
     $detail = $_.Exception.Message
     Write-Log "bootstrap error: $detail"
     $msg = if ($detail -match "checksum_mismatch") {

@@ -128,6 +128,7 @@ export default function App() {
         setProgressPct(100);
         setProgressLabel("Готово");
         setStep("done");
+        window.setTimeout(() => void setup?.close(), 700);
       }
     });
 

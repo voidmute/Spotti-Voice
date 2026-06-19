@@ -45,7 +45,10 @@ export function ThemeToggle({
       tabIndex={-1}
       onClick={toggle}
     >
-      {dark ? <Sun size={17} strokeWidth={2.25} aria-hidden /> : <Moon size={17} strokeWidth={2.25} aria-hidden />}
+      <span className="settings-theme-icon-btn__icons" aria-hidden>
+        <Moon className="settings-theme-icon-btn__icon settings-theme-icon-btn__icon--moon" size={17} strokeWidth={2.25} />
+        <Sun className="settings-theme-icon-btn__icon settings-theme-icon-btn__icon--sun" size={17} strokeWidth={2.25} />
+      </span>
     </button>
   );
 }

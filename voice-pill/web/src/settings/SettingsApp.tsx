@@ -126,9 +126,10 @@ export function SettingsApp() {
   const isCloud = sttMode === "cloud";
 
   const visibleNav = useMemo(() => NAV_ITEMS, []);
+  const sectionOrder = useMemo(() => visibleNav.map((item) => item.id), [visibleNav]);
 
   useSettingsShellMotion(appRef, Boolean(settings));
-  useSettingsPanelMotion(stageRef, section);
+  useSettingsPanelMotion(stageRef, section, sectionOrder);
 
   useEffect(() => {
     persistTheme(theme);
