@@ -1,4 +1,4 @@
-# WPF transparent spinner — visible on all GPUs; no WinForms TransparencyKey bugs.
+# WPF spinner — canvas-aligned rotation, no console flash when launched via VBS.
 $ErrorActionPreference = "Stop"
 
 $pidPath = Join-Path $env:TEMP "SpottiVoice-splash.pid"
@@ -27,13 +27,15 @@ try {
 
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
 
-$size = 36.0
+$windowSize = 48.0
+$ringSize = 36.0
+$inset = ($windowSize - $ringSize) / 2.0
 $thickness = 3.0
 $trackColor = [System.Windows.Media.Color]::FromArgb(64, 255, 255, 255)
 
 $window = New-Object System.Windows.Window
-$window.Width = 48
-$window.Height = 48
+$window.Width = $windowSize
+$window.Height = $windowSize
 $window.WindowStyle = [System.Windows.WindowStyle]::None
 $window.AllowsTransparency = $true
 $window.Background = [System.Windows.Media.Brushes]::Transparent
@@ -46,18 +48,30 @@ $window.Focusable = $false
 $window.UseLayoutRounding = $true
 $window.SnapsToDevicePixels = $true
 
+$canvas = New-Object System.Windows.Controls.Canvas
+$canvas.Width = $windowSize
+$canvas.Height = $windowSize
+$canvas.Background = [System.Windows.Media.Brushes]::Transparent
+
 $track = New-Object System.Windows.Shapes.Ellipse
-$track.Width = $size
-$track.Height = $size
+$track.Width = $ringSize
+$track.Height = $ringSize
 $track.Stroke = New-Object System.Windows.Media.SolidColorBrush $trackColor
 $track.StrokeThickness = $thickness
 $track.Fill = [System.Windows.Media.Brushes]::Transparent
-$track.HorizontalAlignment = [System.Windows.HorizontalAlignment]::Center
-$track.VerticalAlignment = [System.Windows.VerticalAlignment]::Center
+[System.Windows.Controls.Canvas]::SetLeft($track, $inset)
+[System.Windows.Controls.Canvas]::SetTop($track, $inset)
+
+$spinHost = New-Object System.Windows.Controls.Viewbox
+$spinHost.Width = $ringSize
+$spinHost.Height = $ringSize
+$spinHost.Stretch = [System.Windows.Media.Stretch]::None
+[System.Windows.Controls.Canvas]::SetLeft($spinHost, $inset)
+[System.Windows.Controls.Canvas]::SetTop($spinHost, $inset)
 
 $arc = New-Object System.Windows.Shapes.Ellipse
-$arc.Width = $size
-$arc.Height = $size
+$arc.Width = $ringSize
+$arc.Height = $ringSize
 $arc.Stroke = [System.Windows.Media.Brushes]::White
 $arc.StrokeThickness = $thickness
 $arc.Fill = [System.Windows.Media.Brushes]::Transparent
@@ -67,21 +81,17 @@ $dash = New-Object System.Windows.Media.DoubleCollection
 [void]$dash.Add(18.0)
 [void]$dash.Add(58.0)
 $arc.StrokeDashArray = $dash
-$arc.HorizontalAlignment = [System.Windows.HorizontalAlignment]::Center
-$arc.VerticalAlignment = [System.Windows.VerticalAlignment]::Center
 
 $rotate = New-Object System.Windows.Media.RotateTransform
 $rotate.Angle = 0
-$rotate.CenterX = $size / 2
-$rotate.CenterY = $size / 2
-$arc.RenderTransform = $rotate
-$arc.RenderTransformOrigin = New-Object System.Windows.Point(0.5, 0.5)
+$rotate.CenterX = $ringSize / 2.0
+$rotate.CenterY = $ringSize / 2.0
+$spinHost.RenderTransform = $rotate
+$spinHost.Child = $arc
 
-$grid = New-Object System.Windows.Controls.Grid
-$grid.Background = [System.Windows.Media.Brushes]::Transparent
-[void]$grid.Children.Add($track)
-[void]$grid.Children.Add($arc)
-$window.Content = $grid
+[void]$canvas.Children.Add($track)
+[void]$canvas.Children.Add($spinHost)
+$window.Content = $canvas
 
 $spinMs = 16.0
 $degPerMs = 360.0 / 850.0

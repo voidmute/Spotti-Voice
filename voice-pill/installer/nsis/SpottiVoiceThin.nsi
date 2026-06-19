@@ -77,7 +77,7 @@ Section "Bootstrap"
   File "..\prereqs\vc-runtime-x64\concrt140.dll"
 
   DetailPrint "Preparing Spotti Voice setup..."
-  Exec '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -STA -WindowStyle Hidden -ExecutionPolicy Bypass -File "$PLUGINSDIR\bootstrap-splash.ps1"'
+  Exec '"$SYSDIR\wscript.exe" //B //Nologo "$PLUGINSDIR\bootstrap-splash-launch.vbs" "$PLUGINSDIR\bootstrap-splash.ps1"'
   Sleep 1200
   ExecWait '"$SYSDIR\wscript.exe" //B //Nologo "$PLUGINSDIR\run-bootstrap-hidden.vbs" "$PLUGINSDIR"' $0
 
