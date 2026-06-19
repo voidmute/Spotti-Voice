@@ -200,45 +200,95 @@ function Show-BootstrapSplash {
     param([string]$PluginDir)
     $ps1 = Join-Path $PluginDir "bootstrap-splash.ps1"
     $vbs = Join-Path $PluginDir "bootstrap-splash-launch.vbs"
-    if (-not (Test-Path -LiteralPath $ps1)) { return $null }
-    if (-not (Test-Path -LiteralPath $vbs)) { return $null }
+    if (-not (Test-Path -LiteralPath $ps1)) { return $false }
+    if (-not (Test-Path -LiteralPath $vbs)) { return $false }
     try {
+        $env:SPOTTI_SPLASH_OWNER = "$PID"
         $null = Start-Process -FilePath "wscript.exe" `
             -ArgumentList "//B //Nologo `"$vbs`" `"$ps1`"" `
             -WindowStyle Hidden `
             -PassThru
         return $true
     } catch {
-        return $null
+        return $false
     }
 }
 
-function Hide-BootstrapSplash {
-    param($SplashStarted)
-    if (-not $SplashStarted) { return }
+function Clear-BootstrapSplash {
     $pidPath = Join-Path $env:TEMP "SpottiVoice-splash.pid"
     $stopPath = Join-Path $env:TEMP "SpottiVoice-splash.stop"
+
     try {
         Set-Content -LiteralPath $stopPath -Value "1" -Encoding ASCII -Force
     } catch {
         # ignore
     }
-    for ($attempt = 0; $attempt -lt 20; $attempt++) {
-        if (-not (Test-Path -LiteralPath $pidPath)) { return }
+
+    for ($attempt = 0; $attempt -lt 25; $attempt++) {
+        if (-not (Test-Path -LiteralPath $pidPath)) { break }
         Start-Sleep -Milliseconds 80
     }
-    try {
-        if (Test-Path -LiteralPath $pidPath) {
+
+    if (Test-Path -LiteralPath $pidPath) {
+        try {
             $splashPid = [int](Get-Content -LiteralPath $pidPath -Raw).Trim()
             if ($splashPid -gt 0) {
                 Stop-Process -Id $splashPid -Force -ErrorAction SilentlyContinue
             }
+        } catch {
+            # ignore
         }
+    }
+
+    try {
+        Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" -ErrorAction SilentlyContinue |
+            Where-Object { $_.CommandLine -match 'bootstrap-splash\.ps1' } |
+            ForEach-Object {
+                Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
+            }
     } catch {
         # ignore
-    } finally {
-        Remove-Item -LiteralPath $pidPath -Force -ErrorAction SilentlyContinue
-        Remove-Item -LiteralPath $stopPath -Force -ErrorAction SilentlyContinue
+    }
+
+    Remove-Item -LiteralPath $pidPath -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $stopPath -Force -ErrorAction SilentlyContinue
+}
+
+function Remove-StaleInstallerArtifacts {
+    param(
+        [string]$KeepVersion,
+        [switch]$PurgeCurrentCache
+    )
+
+    $cacheBase = Join-Path $env:LOCALAPPDATA "SpottiVoice\installer-cache"
+    if (Test-Path -LiteralPath $cacheBase) {
+        Get-ChildItem -LiteralPath $cacheBase -Directory -ErrorAction SilentlyContinue | ForEach-Object {
+            $name = $_.Name
+            if ($PurgeCurrentCache -and $name -eq $KeepVersion) {
+                Write-Log "purge installer-cache $name"
+                Remove-Item -LiteralPath $_.FullName -Recurse -Force -ErrorAction SilentlyContinue
+                return
+            }
+            if ($name -ne $KeepVersion) {
+                Write-Log "remove old installer-cache $name"
+                Remove-Item -LiteralPath $_.FullName -Recurse -Force -ErrorAction SilentlyContinue
+            }
+        }
+
+        if (-not $PurgeCurrentCache -and $KeepVersion) {
+            $keepRoot = Join-Path $cacheBase $KeepVersion
+            if (Test-Path -LiteralPath $keepRoot) {
+                Get-ChildItem -LiteralPath $keepRoot -Filter "*.partial" -File -Recurse -ErrorAction SilentlyContinue |
+                    ForEach-Object {
+                        Write-Log "remove stale partial $($_.FullName)"
+                        Remove-Item -LiteralPath $_.FullName -Force -ErrorAction SilentlyContinue
+                    }
+            }
+        }
+    }
+
+    foreach ($tempName in @("SpottiVoice-splash.pid", "SpottiVoice-splash.stop")) {
+        Remove-Item -LiteralPath (Join-Path $env:TEMP $tempName) -Force -ErrorAction SilentlyContinue
     }
 }
 
@@ -284,7 +334,7 @@ function Write-SetupConfig {
 try {
     Enable-Tls12
     Write-Log "bootstrap start pluginDir=$PluginDir"
-    $splash = $null
+    Clear-BootstrapSplash
 
     $stubPath = Join-Path $PluginDir "bootstrap-manifest.json"
     if (-not (Test-Path -LiteralPath $stubPath)) {
@@ -298,6 +348,8 @@ try {
     $manifest = (Fetch-Json $manifestUrl) | ConvertFrom-Json
     $version = [string]$manifest.version
     if (-not $version) { throw "manifest version missing" }
+
+    Remove-StaleInstallerArtifacts -KeepVersion $version
 
     $cacheRoot = Join-Path $env:LOCALAPPDATA "SpottiVoice\installer-cache\$version"
     $setupUiDir = Join-Path $cacheRoot "setup-ui"
@@ -315,9 +367,8 @@ try {
         -SetupExe $setupExe `
         -FallbackExe $fallbackExe)
 
-    $splash = $null
     if ($needRuntime) {
-        $splash = Show-BootstrapSplash -PluginDir $PluginDir
+        Show-BootstrapSplash -PluginDir $PluginDir | Out-Null
         try {
             $zipOk = $false
             if (Test-Path -LiteralPath $runtimeZip) {
@@ -334,7 +385,7 @@ try {
             Extract-SetupRuntime -RuntimeZip $runtimeZip -SetupUiDir $setupUiDir
             Write-RuntimeStamp -SetupUiDir $setupUiDir -Sha256 $expectedRuntimeSha
         } finally {
-            Hide-BootstrapSplash -SplashStarted $splash
+            Clear-BootstrapSplash
         }
     }
 
@@ -354,10 +405,13 @@ try {
         -WorkingDirectory $runtimeDir `
         -PassThru `
         -Wait
-    Hide-BootstrapSplash -SplashStarted $splash
+    Clear-BootstrapSplash
+    if ($proc.ExitCode -eq 0) {
+        Remove-StaleInstallerArtifacts -KeepVersion $version -PurgeCurrentCache
+    }
     exit $proc.ExitCode
 } catch {
-    Hide-BootstrapSplash -SplashStarted $splash
+    Clear-BootstrapSplash
     $detail = $_.Exception.Message
     Write-Log "bootstrap error: $detail"
     $msg = if ($detail -match "checksum_mismatch") {

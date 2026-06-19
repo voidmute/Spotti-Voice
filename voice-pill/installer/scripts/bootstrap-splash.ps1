@@ -1,6 +1,13 @@
 # Borderless spinning white ring - no console, no taskbar.
 $pidPath = Join-Path $env:TEMP "SpottiVoice-splash.pid"
+$stopPath = Join-Path $env:TEMP "SpottiVoice-splash.stop"
+Remove-Item -LiteralPath $stopPath -Force -ErrorAction SilentlyContinue
 Set-Content -LiteralPath $pidPath -Value $PID -Encoding ASCII
+
+$ownerPid = 0
+if ($env:SPOTTI_SPLASH_OWNER) {
+    [void][int]::TryParse($env:SPOTTI_SPLASH_OWNER, [ref]$ownerPid)
+}
 
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
 
@@ -53,22 +60,33 @@ $grid = New-Object System.Windows.Controls.Grid
 [void]$grid.Children.Add($arc)
 $window.Content = $grid
 
-$stopPath = Join-Path $env:TEMP "SpottiVoice-splash.stop"
-
 $window.Add_Closed({
     Remove-Item -LiteralPath $pidPath -Force -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath $stopPath -Force -ErrorAction SilentlyContinue
 })
 
-$stopTimer = New-Object System.Windows.Threading.DispatcherTimer
-$stopTimer.Interval = [TimeSpan]::FromMilliseconds(120)
-$stopTimer.Add_Tick({
+$script:stopTimer = New-Object System.Windows.Threading.DispatcherTimer
+$script:stopTimer.Interval = [TimeSpan]::FromMilliseconds(100)
+$script:stopTimer.Add_Tick({
     if (Test-Path -LiteralPath $stopPath) {
-        $stopTimer.Stop()
+        $script:stopTimer.Stop()
         $window.Close()
+        return
+    }
+    if ($ownerPid -gt 0) {
+        $ownerAlive = $false
+        try {
+            $ownerAlive = $null -ne (Get-Process -Id $ownerPid -ErrorAction Stop)
+        } catch {
+            $ownerAlive = $false
+        }
+        if (-not $ownerAlive) {
+            $script:stopTimer.Stop()
+            $window.Close()
+        }
     }
 })
-$stopTimer.Start()
+$script:stopTimer.Start()
 
 $window.Add_Loaded({
     $anim = New-Object System.Windows.Media.Animation.DoubleAnimation
