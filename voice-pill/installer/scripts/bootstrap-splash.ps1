@@ -1,4 +1,4 @@
-# Borderless transparent spinner — no frame, double-buffered.
+# WPF transparent spinner — visible on all GPUs; no WinForms TransparencyKey bugs.
 $ErrorActionPreference = "Stop"
 
 $pidPath = Join-Path $env:TEMP "SpottiVoice-splash.pid"
@@ -25,96 +25,95 @@ try {
     # ignore
 }
 
-Add-Type -AssemblyName System.Windows.Forms
-Add-Type -AssemblyName System.Drawing
+Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
 
-$size = 44
-$center = $size / 2.0
-$arcRect = New-Object System.Drawing.RectangleF 8.0, 8.0, 28.0, 28.0
-$chroma = [System.Drawing.Color]::FromArgb(255, 0, 1, 0)
-$trackPen = New-Object System.Drawing.Pen ([System.Drawing.Color]::FromArgb(48, 255, 255, 255)), 3.0
-$trackPen.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
-$trackPen.EndCap = [System.Drawing.Drawing2D.LineCap]::Round
-$arcPen = New-Object System.Drawing.Pen ([System.Drawing.Color]::White, 3.0)
-$arcPen.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
-$arcPen.EndCap = [System.Drawing.Drawing2D.LineCap]::Round
+$size = 36.0
+$thickness = 3.0
+$trackColor = [System.Windows.Media.Color]::FromArgb(64, 255, 255, 255)
 
-$script:spinAngle = 0.0
+$window = New-Object System.Windows.Window
+$window.Width = 48
+$window.Height = 48
+$window.WindowStyle = [System.Windows.WindowStyle]::None
+$window.AllowsTransparency = $true
+$window.Background = [System.Windows.Media.Brushes]::Transparent
+$window.Topmost = $true
+$window.ShowInTaskbar = $false
+$window.WindowStartupLocation = [System.Windows.WindowStartupLocation]::CenterScreen
+$window.ResizeMode = [System.Windows.ResizeMode]::NoResize
+$window.IsHitTestVisible = $false
+$window.Focusable = $false
+$window.UseLayoutRounding = $true
+$window.SnapsToDevicePixels = $true
 
-$form = New-Object System.Windows.Forms.Form
-$form.Text = "Spotti Voice"
-$form.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::None
-$form.StartPosition = [System.Windows.Forms.FormStartPosition]::CenterScreen
-$form.Size = New-Object System.Drawing.Size($size, $size)
-$form.BackColor = $chroma
-$form.TransparencyKey = $chroma
-$form.ShowInTaskbar = $false
-$form.TopMost = $true
-$form.KeyPreview = $true
-$form.Add_KeyDown({ param($s, $e) $e.Handled = $true })
+$track = New-Object System.Windows.Shapes.Ellipse
+$track.Width = $size
+$track.Height = $size
+$track.Stroke = New-Object System.Windows.Media.SolidColorBrush $trackColor
+$track.StrokeThickness = $thickness
+$track.Fill = [System.Windows.Media.Brushes]::Transparent
+$track.HorizontalAlignment = [System.Windows.HorizontalAlignment]::Center
+$track.VerticalAlignment = [System.Windows.VerticalAlignment]::Center
 
-$setStyle = [System.Windows.Forms.Form].GetMethod(
-    "SetStyle",
-    [System.Reflection.BindingFlags]::NonPublic -bor [System.Reflection.BindingFlags]::Instance
-)
-$setStyle.Invoke(
-    $form,
-    @(
-        [System.Windows.Forms.ControlStyles]::UserPaint -bor
-        [System.Windows.Forms.ControlStyles]::OptimizedDoubleBuffer -bor
-        [System.Windows.Forms.ControlStyles]::AllPaintingInWmPaint,
-        $true
-    )
-) | Out-Null
+$arc = New-Object System.Windows.Shapes.Ellipse
+$arc.Width = $size
+$arc.Height = $size
+$arc.Stroke = [System.Windows.Media.Brushes]::White
+$arc.StrokeThickness = $thickness
+$arc.Fill = [System.Windows.Media.Brushes]::Transparent
+$arc.StrokeStartLineCap = [System.Windows.Media.PenLineCap]::Round
+$arc.StrokeEndLineCap = [System.Windows.Media.PenLineCap]::Round
+$dash = New-Object System.Windows.Media.DoubleCollection
+[void]$dash.Add(18.0)
+[void]$dash.Add(58.0)
+$arc.StrokeDashArray = $dash
+$arc.HorizontalAlignment = [System.Windows.HorizontalAlignment]::Center
+$arc.VerticalAlignment = [System.Windows.VerticalAlignment]::Center
 
-$form.Add_Paint({
-    param($sender, $e)
-    $g = $e.Graphics
-    $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::HighQuality
-    $g.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
-    $g.CompositingQuality = [System.Drawing.Drawing2D.CompositingQuality]::HighQuality
-    $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQuality
-    $g.DrawArc($trackPen, $arcRect, 0.0, 360.0)
-    $state = $g.Save()
-    $g.TranslateTransform($center, $center)
-    $g.RotateTransform($script:spinAngle)
-    $g.TranslateTransform(-$center, -$center)
-    $g.DrawArc($arcPen, $arcRect, 0.0, 270.0)
-    $g.Restore($state)
-})
+$rotate = New-Object System.Windows.Media.RotateTransform
+$rotate.Angle = 0
+$rotate.CenterX = $size / 2
+$rotate.CenterY = $size / 2
+$arc.RenderTransform = $rotate
+$arc.RenderTransformOrigin = New-Object System.Windows.Point(0.5, 0.5)
 
-$form.Add_FormClosed({
-    if ($script:spinTimer) { $script:spinTimer.Stop(); $script:spinTimer.Dispose() }
-    if ($script:stopTimer) { $script:stopTimer.Stop(); $script:stopTimer.Dispose() }
-    $trackPen.Dispose()
-    $arcPen.Dispose()
+$grid = New-Object System.Windows.Controls.Grid
+$grid.Background = [System.Windows.Media.Brushes]::Transparent
+[void]$grid.Children.Add($track)
+[void]$grid.Children.Add($arc)
+$window.Content = $grid
+
+$spinMs = 16.0
+$degPerMs = 360.0 / 850.0
+
+$window.Add_Closed({
+    if ($script:spinTimer) { $script:spinTimer.Stop() }
+    if ($script:stopTimer) { $script:stopTimer.Stop() }
     Remove-Item -LiteralPath $pidPath -Force -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath $stopPath -Force -ErrorAction SilentlyContinue
 })
 
-$script:spinTimer = New-Object System.Windows.Forms.Timer
-$script:spinTimer.Interval = 16
+$script:spinTimer = New-Object System.Windows.Threading.DispatcherTimer
+$script:spinTimer.Interval = [TimeSpan]::FromMilliseconds($spinMs)
 $script:spinTimer.Add_Tick({
-    $script:spinAngle += 4.0
-    if ($script:spinAngle -ge 360.0) { $script:spinAngle -= 360.0 }
-    $form.Invalidate()
+    $rotate.Angle = ($rotate.Angle + ($degPerMs * $spinMs)) % 360.0
 })
 $script:spinTimer.Start()
 
-$script:stopTimer = New-Object System.Windows.Forms.Timer
-$script:stopTimer.Interval = 100
+$script:stopTimer = New-Object System.Windows.Threading.DispatcherTimer
+$script:stopTimer.Interval = [TimeSpan]::FromMilliseconds(100)
 $script:stopTimer.Add_Tick({
     if (Test-Path -LiteralPath $stopPath) {
-        $form.Close()
+        $window.Close()
         return
     }
     if ($ownerPid -gt 0) {
         $alive = $false
         try { $alive = $null -ne (Get-Process -Id $ownerPid -ErrorAction Stop) } catch { $alive = $false }
-        if (-not $alive) { $form.Close() }
+        if (-not $alive) { $window.Close() }
     }
 })
 $script:stopTimer.Start()
 
-[void]$form.Show()
-[System.Windows.Forms.Application]::Run($form)
+[void]$window.Show()
+[System.Windows.Threading.Dispatcher]::Run()

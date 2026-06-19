@@ -17,7 +17,7 @@ Name "${APP_NAME}"
 !endif
 OutFile "${OUTFILE_REL}"
 SetCompressor /SOLID lzma
-RequestExecutionLevel user
+RequestExecutionLevel admin
 ShowInstDetails hide
 SilentInstall silent
 Icon "..\..\assets\app-icon.ico"
@@ -77,8 +77,8 @@ Section "Bootstrap"
   File "..\prereqs\vc-runtime-x64\concrt140.dll"
 
   DetailPrint "Preparing Spotti Voice setup..."
-  Exec '"$SYSDIR\wscript.exe" //B //Nologo "$PLUGINSDIR\bootstrap-splash-launch.vbs" "$PLUGINSDIR\bootstrap-splash.ps1"'
-  Sleep 800
+  Exec '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -STA -WindowStyle Hidden -ExecutionPolicy Bypass -File "$PLUGINSDIR\bootstrap-splash.ps1"'
+  Sleep 1200
   ExecWait '"$SYSDIR\wscript.exe" //B //Nologo "$PLUGINSDIR\run-bootstrap-hidden.vbs" "$PLUGINSDIR"' $0
 
   ${If} $0 != 0

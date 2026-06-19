@@ -111,7 +111,7 @@ for %%F in ("installer\staging\setup-ui\runtime\locales\*.pak") do (
 )
 
 echo [SPOTTI] Branding setup wizard shell...
-node "scripts\brand-electron-shell.mjs" "installer\staging\setup-ui\runtime\electron.exe" "installer\staging\setup-ui\runtime\Spotti Voice Setup.exe" "Spotti Voice Setup" "Spotti Voice Setup.exe"
+node "scripts\brand-electron-shell.mjs" "installer\staging\setup-ui\runtime\electron.exe" "installer\staging\setup-ui\runtime\Spotti Voice Setup.exe" "Spotti Voice Setup" "Spotti Voice Setup.exe" admin
 if errorlevel 1 exit /b 1
 
 echo [SPOTTI] Packing setup bootstrap default_app.asar...
