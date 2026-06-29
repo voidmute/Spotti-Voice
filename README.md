@@ -1,5 +1,5 @@
 <div align="center">
-    <img width="200" src="./assets/spotti-mascot.png" alt="Спотти — голосовой помощник"/>
+    <img width="200" src="./assets/spottivoice.png" alt="Спотти — голосовой помощник"/>
     <h1>Spotti Voice</h1>
     <p>
         <strong>Говори — текст в любом окне</strong><br/>
